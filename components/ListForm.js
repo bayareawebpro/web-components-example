@@ -62,9 +62,7 @@ export default class ListForm extends Component {
         return `
             <style>
             [part="form-wrapper"]{
-                margin: 0 0 2rem 0;
                 padding: 0 0 2rem 0;
-                border-bottom: 1px solid #ddd;
             }
             [part="form"]{
                 display: flex;

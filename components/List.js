@@ -1,5 +1,6 @@
 import Component from "./Component.js";
 import clamp from "../utilities/Numbers.js";
+
 export default class List extends Component {
 
     static observedAttributes = [
@@ -10,7 +11,7 @@ export default class List extends Component {
         return {
             visible: 0,
             loading: false,
-            list: this.props.items
+            list: this.props.items || []
         }
     }
 
@@ -36,7 +37,7 @@ export default class List extends Component {
 
             const item = this.state.list.find((item) => item.id === id);
 
-            if(item){
+            if (item) {
                 item.value = value;
             }
         })
@@ -81,6 +82,15 @@ export default class List extends Component {
             visible
         } = this.state;
 
+
+        if (!list.length) {
+            return `
+                <div part="wrapper">
+                    <slot name="before"></slot>
+                </div>
+            `;
+        }
+
         const slice = list.slice(visible, visible + 10);
         const from = clamp(visible + 1, 1, list.length - 9);
         const to = clamp(visible + 10, visible, list.length);
@@ -90,7 +100,9 @@ export default class List extends Component {
             
                 <slot name="before"></slot>
                 
-                <div part="list-info">${from}-${to} of ${list.length} rows</div>
+                ${_.if(list.length > 9, () => `
+                    <div part="list-info">${from}-${to} of ${list.length} rows</div>
+                `)}
                 
                 ${_.if(list.length, () => `
 
@@ -104,7 +116,7 @@ export default class List extends Component {
                     
                     <button part="btn-save" type="button" onclick="onSave">
                         ${_.if(loading, () => `Loading`)}
-                        ${_.else(loading, () => `Save`)}
+                        ${_.if(!loading, () => `Save`)}
                     </button>
                 `)}
             </div>
@@ -121,35 +133,7 @@ export default class List extends Component {
                 background-color: #f3f3f3;
                 text-align: left;
             }
-            [part="form-wrapper"]{
-                margin: 0 0 2rem 0;
-                padding: 0 0 2rem 0;
-                border-bottom: 1px solid #ddd;
-            }
-            [part="form"]{
-                display: flex;
-                justify-content: center;
-                gap: 0.6rem;
-            }
-            [part="errors"]{
-                margin: 0.4rem 0;
-                padding: 0;
-                color: red;
-                list-style: none;
-                font-weight: bold;
-            }
             
-            input{
-                margin: 0;
-                padding: 1rem;
-                line-height: 1.6rem;
-                border: 1px solid #888;
-                cursor: text;
-                font-size: 1.6rem;
-                flex-grow: 1;
-                border-radius: 4px;
-            }
-                        
             button{
                 margin: 0;
                 padding: 1.4rem;

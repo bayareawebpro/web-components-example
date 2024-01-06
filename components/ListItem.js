@@ -42,7 +42,7 @@ export default class ListItem extends Component {
                         Cancel
                     </button>
                 `)}
-                ${_.else(editing, () => `
+                ${_.if(!editing, () => `
                      <div part="preview">
                         ${item.value}
                     </div>

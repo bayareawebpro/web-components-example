@@ -113,11 +113,6 @@ export class View {
         return `${truthy ? html() : ''}`
     }
 
-
-    else(truthy, html) {
-        return `${!truthy ? html() : ''}`
-    }
-
     each(items, callback) {
        return `${items.map(callback).join('')}`
     }
