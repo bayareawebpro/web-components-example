@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Web Components</title>
+    <link rel="preload" href="./src/app.css" as="style" />
+    <link rel="stylesheet" href="./src/app.css">
+    <link rel="preload" href="./src/components/index.js" crossorigin="anonymous" as="script" />
+<!--    <script type="module" src="./src/components/index.js" defer></script>-->
+<!--    <script type="module" defer>-->
+<!--        import App, {Events} from './src/app.js';-->
+<!--    </script>-->
+</head>
+<body>
+<custom-list name="list">
+    <custom-list-form slot="before"></custom-list-form>
+</custom-list>
+</body>
+</html>
