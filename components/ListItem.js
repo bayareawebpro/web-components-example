@@ -2,67 +2,15 @@ import Component from "./Component.js";
 
 export default class ListItem extends Component {
 
-    static observedAttributes = [
-        'item:encoded',
-    ];
+    constructor() {
+        super();
+    }
 
     get data() {
         return {
             editing: false,
-            item: this.props.item
+            item: {value: 'Whoops: Item prop not loaded.'}
         }
-    }
-
-    render(_) {
-
-        const {
-            item,
-            editing,
-        } = this.state;
-
-        return `
-            <li part="wrapper">
-                ${_.if(editing, () => `
-                    <input 
-                        type="text" 
-                        part="input" 
-                        autofocus
-                        placeholder="Enter text..."
-                        value="${item.value}">
-                    <button 
-                        type="button" 
-                        part="btn-green" 
-                        onclick="onUpdate">
-                        Save
-                    </button>
-                    <button 
-                        type="button" 
-                        part="btn-red" 
-                        onclick="toggleEdit">
-                        Cancel
-                    </button>
-                `)}
-                ${_.if(!editing, () => `
-                     <div part="preview">
-                        ${item.value}
-                    </div>
-                     <div part="actions">
-                         <button 
-                             part="btn-blue" 
-                             type="button" 
-                             onclick="toggleEdit">
-                             Edit
-                         </button>
-                         <button 
-                             part="btn-red" 
-                             type="button" 
-                             onclick="onRemove">
-                             Remove
-                         </button>
-                     </div>
-                `)}
-            </li>
-        `;
     }
 
     toggleEdit() {
@@ -70,24 +18,66 @@ export default class ListItem extends Component {
     }
 
     onUpdate() {
-        const {value} = this.view.find('input')
-
-        this.$emit('custom-list:update', {...this.state.item, value})
+        this.batchUpdate(() => {
+            this.$emit('custom-list:update', {...this.state.item})
+            this.toggleEdit()
+        })
     }
 
     onRemove() {
-
-        const {
-            item,
-        } = this.props;
+        const {item} = this.state;
 
         this.$emit('custom-list:remove', item)
+    }
+
+    render(_) {
+
+        return `
+            <li data-if="state.editing">
+               <input
+                    type="text"
+                    part="input"
+                    autofocus
+                    placeholder="Enter text..."
+                    oninput="state.item.value = $event.target.value"
+                    data-bind:value="state.item.value">
+                <button
+                    type="button"
+                    part="btn-green"
+                    onclick="onUpdate()">
+                    Save
+                </button>
+                <button
+                    type="button"
+                    part="btn-red"
+                    onclick="toggleEdit()">
+                    Cancel
+                </button>
+            </li>
+            <li data-else>
+                <div part="preview" data-bind:text="state.item.value"></div>
+                <div part="actions">
+                    <button
+                        part="btn-blue"
+                        type="button"
+                        onclick="toggleEdit()">
+                        Edit
+                    </button>
+                    <button
+                        part="btn-red"
+                        type="button"
+                        onclick="onRemove()">
+                        Remove
+                    </button>
+                </div>
+            </li>
+        `;
     }
 
     get styles() {
         return `
             <style>
-            [part="wrapper"]{
+            li{
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -102,7 +92,7 @@ export default class ListItem extends Component {
                 font-size: 1.6rem;
             }
             [part="actions"]{
-                flex-shrink: 1;
+                flex-shrink: 0;
                 display: inline-flex;
                 gap: 0.4rem;
             }

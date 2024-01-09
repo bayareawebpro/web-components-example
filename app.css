@@ -3,14 +3,20 @@
 * Base
 * =========================
 */
-html {
-    font-size: 62.5%;
-    padding: 0;
-    margin: 0;
+* {
+    box-sizing : border-box;
 }
-body{
+html,body{
+    font-size: 62.5%;
     padding: 0;
     margin: 0;
     text-align: center;
     font-family: sans-serif;
+    background-color: white;
+}
+body{
+    font-size: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
 }

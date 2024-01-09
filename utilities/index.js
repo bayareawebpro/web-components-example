@@ -1,6 +1,21 @@
-import {camelCase} from "./Strings.js";
+export function factory(times, callback) {
+    const values = [];
+    while (times > 0) {
+        values.push(callback());
+        times--;
+    }
+    return values;
+}
 
-export default function toType(name, value){
+export function camelCase(str) {
+    return str.toLowerCase().replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase());
+}
+
+export function uuid(){
+    return crypto.getRandomValues(new Uint32Array(4)).join('-');
+}
+
+export function toType(name, value){
     const nameArray = name.includes(':') ? name.split(':') : [name, 'string']
     const realType = [...nameArray].reverse().at(0);
     const realName = nameArray.at(0);

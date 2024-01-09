@@ -1,5 +1,6 @@
 import Component from "./Component.js";
-import clamp from "../utilities/Numbers.js";
+import {uuid, factory} from "../utilities/index.js";
+
 
 export default class List extends Component {
 
@@ -9,9 +10,10 @@ export default class List extends Component {
 
     get data() {
         return {
-            visible: 0,
-            loading: false,
-            list: this.props.items || []
+            items: this.props.items || factory(500, () => ({
+                id: uuid(),
+                value: uuid(),
+            }))
         }
     }
 
@@ -21,104 +23,54 @@ export default class List extends Component {
         this.addEventListener('custom-list:remove', this.removeItem);
     }
 
-    addItem({detail: {value}}) {
 
-        this.batchUpdate(() => {
-            this.state.visible = 0
-            this.state.list.unshift({
-                id: Math.random(), value
-            })
-        })
+    beforeDestroy() {
+        this.removeEventListener('custom-list:add', this.addItem);
+        this.removeEventListener('custom-list:update', this.updateItem);
+        this.removeEventListener('custom-list:remove', this.removeItem);
     }
 
-    updateItem({detail: {id, value}}) {
-
+    addItem(event) {
         this.batchUpdate(() => {
-
-            const item = this.state.list.find((item) => item.id === id);
-
-            if (item) {
-                item.value = value;
+            const row = {
+                id: uuid(),
+                value: event.detail.value
             }
+            this.state.items.unshift(row);
+            this.log('Added Row', row);
+            this.view.ref('ul').scrollTo(0, 0);
         })
     }
 
-    removeItem({detail: {id}}) {
-
+    updateItem({detail}) {
         this.batchUpdate(() => {
-            this.state.list = this.state.list.filter((value) => value.id !== id);
-            this.decrementVisible();
-        });
+            const index = this.state.items.findIndex((item) => item.id === detail.id);
+            this.state.items.splice(index, 1, detail);
+            this.log('Updated Row', detail);
+        }, false)
     }
 
-    updateVisible({wheelDelta}) {
-        if (wheelDelta > 0) {
-            this.decrementVisible();
-        } else {
-            this.incrementVisible();
-        }
-    }
-
-    incrementVisible() {
-        this.state.visible = clamp(this.state.visible + 1, 0, this.state.list.length - 10);
-    }
-
-    decrementVisible() {
-        this.state.visible = clamp(this.state.visible - 1, 0, this.state.list.length - 10);
-    }
-
-    onSave() {
-
-        this.state.loading = true;
-
-        setTimeout(() => this.state.loading = false, 2000);
+    removeItem({detail}) {
+        this.batchUpdate(() => {
+            const index = this.state.items.findIndex((item) => item.id === detail.id);
+            this.state.items.splice(index, 1);
+            this.log('Removed Row', detail);
+        })
     }
 
     render(_) {
-
-        const {
-            list,
-            loading,
-            visible
-        } = this.state;
-
-
-        if (!list.length) {
-            return `
-                <div part="wrapper">
-                    <slot name="before"></slot>
-                </div>
-            `;
-        }
-
-        const slice = list.slice(visible, visible + 10);
-        const from = clamp(visible + 1, 1, list.length - 9);
-        const to = clamp(visible + 10, visible, list.length);
-
         return `
-            <div part="wrapper">
-            
-                <slot name="before"></slot>
-                
-                ${_.if(list.length > 9, () => `
-                    <div part="list-info">${from}-${to} of ${list.length} rows</div>
-                `)}
-                
-                ${_.if(list.length, () => `
-
-                    <ul part="list" onwheel="updateVisible">
-                        ${_.each(slice, (item) => `
-                            <custom-list-item
-                                item:encoded="${_.encode(item)}">
-                            </custom-list-item>
-                        `)}
-                    </ul>
-                    
-                    <button part="btn-save" type="button" onclick="onSave">
-                        ${_.if(loading, () => `Loading`)}
-                        ${_.if(!loading, () => `Save`)}
-                    </button>
-                `)}
+            <div class="wrapper">
+                <custom-list-form></custom-list-form>
+                <div class="list-info">
+                    <span data-bind:text="state.items.length"></span> items
+                </div>
+                <ul>
+                    <template data-for="item of state.items">
+                        <custom-list-item data-prop:item="item">
+                        </custom-list-item>
+                    </template>
+                </ul>
             </div>
         `;
     }
@@ -126,50 +78,35 @@ export default class List extends Component {
     get styles() {
         return `
             <style>
-            [part="wrapper"]{
-                max-width: 600px;
-                margin: 0 auto;
+            :host{
+            display: contents
+            }
+            .wrapper{
                 padding: 2rem;
                 background-color: #f3f3f3;
                 text-align: left;
+                display: flex;
+                flex-direction: column;
+                box-sizing: border-box;
+                height: 100%;
+              flex: 1;
+              justify-content: center;
             }
             
-            button{
-                margin: 0;
-                padding: 1.4rem;
-                border: none;
-                box-shadow: 0 1px 2px rgba(0,0,0, 0.3);
-                cursor: pointer;
-                color: white;
-                display: inline-flex;
-                border-radius: .3rem;
-                line-height: 1.6rem;
-                font-size: 1.6rem;
-                transition: all 100ms ease-in-out;
-            }
-            
-            [part="list-info"]{
+            .list-info{
                 padding: 0.2rem 0;
+                flex-shrink: 0;
             }
             
-            [part="list"]{
-                padding: 0;
+            ul{
                 list-style: none;
-            }
-            [part="btn-add"]{
-                background-color: #006699;
-            }
-            [part="btn-add"]:hover{
-                background-color: #0080c4;
-            }
-            [part="btn-save"]{
-                padding: 1.6rem 2.6rem;
-                background-color: #459900;
-                font-size: 2rem;
-                color: white;
-            }
-            [part="btn-save"]:hover{
-                background-color: #408c00;
+                flex-direction: column;
+                overflow-y: scroll;
+                scroll-behavior: smooth;
+                flex-grow: 1;
+                box-shadow: rgba(0,0,0,0.3) inset 0 0 5px;
+                padding: 0.9rem;
+                max-height: 100%;
             }
             </style>
         `;

@@ -1,5 +1,5 @@
-import {View} from "../utilities/View.js";
-import toType from "../utilities/Types.js";
+import {uuid, toType} from "../utilities/index.js";
+import Compiler from "../utilities/Compiler.js";
 
 export default class Component extends HTMLElement {
 
@@ -9,23 +9,37 @@ export default class Component extends HTMLElement {
 
     constructor() {
         super();
-        this.props = {};
-        this.state = {};
-        this.debug = true;
-        this.measurePerformance = true;
-        this.lockedForStateUpdate = false;
-        this.attachShadow({mode: 'open'});
-        this.view = new View(this);
+        this.uuid = uuid();
+        this.debug = false;
+        this.logMutations = false;
+        this.measurePerformance = false;
+        this.lockedForStateUpdate = true;
+        this.dependencies = new Map;
+        this.view = new Compiler(this);
+        this.errorHandler = this.log.bind(this);
+        this.renderedCallback = this.rendered.bind(this);
+        this.props = this.watch(this.props || {});
+        this.state = this.watch(this.data);
+        this.attachShadow({
+            mode: 'open',
+            delegatesFocus: true
+        });
     }
 
     get data() {
-        return {
-
-        }
+        return {};
     }
 
     setup() {
         // Setup Listeners
+    }
+
+    updated() {
+        // ?
+    }
+
+    beforeDestroy() {
+        // Destroy Listeners
     }
 
     render(_) {
@@ -40,57 +54,104 @@ export default class Component extends HTMLElement {
         `;
     }
 
-    watch(state = {}, config = {}){
-        return new Proxy(state, config)
+    setState(name, value) {
+        this.state[name] = value;
     }
 
-    update() {
-        if(this.lockedForStateUpdate){
+    watch(state = {}, callback) {
+        return new Proxy(state, {
+            get: (target, prop) => {
+                return prop in target ? target[prop] : null;
+            },
+            set: (target, key, value) => {
+
+                const oldHash = this.dependencies.get(key);
+                const newHash = JSON.stringify(value);
+                const expired = target[key];
+
+                if (oldHash === newHash) {
+                    if (this.logMutations) {
+                        this.log(`State Valid: ${key}`);
+                    }
+                    return true;
+                }
+
+                this.dependencies.set(key, newHash);
+
+                target[key] = value;
+
+                this.update().then(()=>{
+                    if (this.logMutations) {
+                        this.log(`State Mutated: ${key}`, value);
+                    }
+                    if(typeof callback === 'function'){
+                        callback(value, expired)
+                    }
+                }).catch(this.log.bind(this))
+
+                return true;
+            }
+        })
+    }
+
+    async update() {
+        if (this.lockedForStateUpdate) {
             return;
         }
 
-        performance.clearMeasures(`${this.constructor.name}:compile`);
-        performance.clearMeasures(`${this.constructor.name}:render`);
-        performance.clearMarks(`${this.constructor.name}:compile`);
-        performance.clearMarks(`${this.constructor.name}:render`);
+        this.performanceMark('compile');
 
-        if(this.measurePerformance){
-            performance.mark(`${this.constructor.name}:compile`);
-        }
-
-        const rendered = this.render(this.view);
-
-        if(!(rendered instanceof View)){
-            this.shadowRoot.replaceChildren(this.view.compile(rendered))
-        }
-
-        if(this.measurePerformance){
-            performance.mark(`${this.constructor.name}:render`);
-
-            const measurement = performance.measure(
-                `${this.constructor.name}:render`,
-                `${this.constructor.name}:compile`
-            );
-
-            this.log(`Rendered in ${measurement.duration.toFixed(2)}ms`);
-        }
+        await (
+            this.view.compiled
+                ? this.view.updateCompiled()
+                : this.view.compile(this.render(this.view))
+        ).then(this.renderedCallback).catch(this.errorHandler);
     }
 
-    toError(error){
-        return new Error(`${this.constructor.name}: ${error}`);
+    rendered(){
+        this.performanceMeasure('compile', 'rendered');
+        this.updated()
     }
 
-    log(event, data){
-        if(this.debug){
-            if(data){
-                console.log(`${this.constructor.name}: ${event}`, data);
-            }else{
-                console.log(`${this.constructor.name}: ${event}`);
+    performanceMark(name){
+        if (!this.measurePerformance) return;
+        performance.mark(`${this.uuid}:${name}`);
+    }
+
+    performanceMeasure(start, end){
+        if (!this.measurePerformance) return;
+
+        this.performanceMark(end);
+
+        const measure = `${this.uuid}:${start}:${end}`;
+        const first = `${this.uuid}:${start}`;
+        const last = `${this.uuid}:${end}`;
+
+        const measurement = performance.measure(measure, first, last);
+
+        this.log(`${start}:${end} in ${measurement.duration}ms`);
+
+        performance.clearMarks(first);
+        performance.clearMarks(last);
+        performance.clearMeasures(measure);
+    }
+
+    log(event, data) {
+
+        if (event.constructor.name.includes('Error') || event.constructor.name.includes('Exception')) {
+            return console.error(`${this.constructor.name}:`, event);
+        }
+
+        if(this.debug || this.measurePerformance){
+            if (data) {
+                console.info(`${this.constructor.name}: ${event}`, data);
+            } else {
+                console.debug(`${this.constructor.name}: ${event}`);
             }
         }
     }
 
-    $emit(event, detail = {}, config = {}){
+    $emit(event, detail = {}, config = {}) {
         this.dispatchEvent(new CustomEvent(event, {
             cancelable: false,
             composed: true,
@@ -100,56 +161,34 @@ export default class Component extends HTMLElement {
         }));
     }
 
-    batchUpdate(callback, reRender = true){
-        if(typeof callback === 'function'){
-            //this.log('Locked for batch update.')
+    batchUpdate(callback, reRender = true) {
+        if (typeof callback === 'function') {
             this.lockedForStateUpdate = true;
-
-            callback();
-
-            //this.log('UnLocked for render.')
+            callback.call();
             this.lockedForStateUpdate = false;
-
-            if(reRender){
-                this.update();
+            if (reRender) {
+                this.update().catch(this.errorHandler);
             }
         }
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
         const {realName, realValue} = toType(name, newValue)
-
-        const existingValue = this.props[realName] || null
-
         this.props[realName] = realValue
-
-        const methodName = `${realName}AttributeChanged`;
-
-        if(typeof this[methodName] === 'function'){
-            this[methodName](realValue, existingValue)
-        }
     }
 
     connectedCallback() {
-        this.batchUpdate(()=>{
-            this.setup();
-            this.state = new Proxy(this.data, {
-                get: (target, prop) => {
-                    return prop in target ? target[prop] : null;
-                },
-                set: (target, key, value) => {
-                    target[key] = value
-                    this.log(`state.${key} mutated`)
-                    this.update()
-                    return true;
-                }
-            })
+        this.setup();
+        this.batchUpdate(() => {
+            this.$emit('connected');
         });
     }
 
     disconnectedCallback() {
-        this.log('destroyed.')
-        this.props = {}
-        this.state = {}
+        this.beforeDestroy();
+        this.dependencies = null;
+        this.props = null;
+        this.state = null;
+        this.view = null;
     }
 }
