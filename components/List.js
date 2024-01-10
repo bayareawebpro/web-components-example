@@ -4,6 +4,11 @@ import {uuid, factory} from "../utilities/index.js";
 
 export default class List extends Component {
 
+    constructor(props) {
+        super(props);
+        this.debug = this.measurePerformance = true;
+    }
+
     static observedAttributes = [
         'items:encoded'
     ];
@@ -58,7 +63,7 @@ export default class List extends Component {
         })
     }
 
-    render(_) {
+    get template() {
         return `
             <div class="wrapper">
                 <custom-list-form></custom-list-form>
@@ -67,7 +72,9 @@ export default class List extends Component {
                 </div>
                 <ul>
                     <template data-for="item of state.items">
-                        <custom-list-item data-prop:item="item">
+                        <custom-list-item 
+                            data-key="item.id"
+                            data-state:item="item">
                         </custom-list-item>
                     </template>
                 </ul>
@@ -79,18 +86,15 @@ export default class List extends Component {
         return `
             <style>
             :host{
-            display: contents
+                display: flex;
+                flex-direction: column;
+                box-sizing: border-box;
+                max-height: 100vh;
             }
             .wrapper{
                 padding: 2rem;
                 background-color: #f3f3f3;
                 text-align: left;
-                display: flex;
-                flex-direction: column;
-                box-sizing: border-box;
-                height: 100%;
-              flex: 1;
-              justify-content: center;
             }
             
             .list-info{

@@ -1,6 +1,9 @@
 import {uuid, toType} from "../utilities/index.js";
 import Compiler from "../utilities/Compiler.js";
 
+/**
+ * @module Component
+ */
 export default class Component extends HTMLElement {
 
     static observedAttributes = [
@@ -12,18 +15,17 @@ export default class Component extends HTMLElement {
         this.uuid = uuid();
         this.debug = false;
         this.logMutations = false;
+        this.dependencies = new Map;
         this.measurePerformance = false;
         this.lockedForStateUpdate = true;
-        this.dependencies = new Map;
-        this.view = new Compiler(this);
-        this.errorHandler = this.log.bind(this);
+        this.errorHandler = this.errorHandler.bind(this);
         this.renderedCallback = this.rendered.bind(this);
         this.props = this.watch(this.props || {});
         this.state = this.watch(this.data);
-        this.attachShadow({
+        this.view = new Compiler(this, this.attachShadow({
             mode: 'open',
             delegatesFocus: true
-        });
+        }));
     }
 
     get data() {
@@ -42,7 +44,7 @@ export default class Component extends HTMLElement {
         // Destroy Listeners
     }
 
-    render(_) {
+    get template() {
         return ``;
     }
 
@@ -63,10 +65,11 @@ export default class Component extends HTMLElement {
             get: (target, prop) => {
                 return prop in target ? target[prop] : null;
             },
-            set: (target, key, value) => {
+            set: (target, key, newVal) => {
+                const oldVal = target[key];
 
                 const oldHash = this.dependencies.get(key);
-                const newHash = JSON.stringify(value);
+                const newHash = JSON.stringify(newVal);
                 const expired = target[key];
 
                 if (oldHash === newHash) {
@@ -77,17 +80,16 @@ export default class Component extends HTMLElement {
                 }
 
                 this.dependencies.set(key, newHash);
-
-                target[key] = value;
+                target[key] = newVal;
 
                 this.update().then(()=>{
                     if (this.logMutations) {
-                        this.log(`State Mutated: ${key}`, value);
+                        this.log(`State Mutated: ${key}`, newVal);
                     }
                     if(typeof callback === 'function'){
-                        callback(value, expired)
+                        callback(newVal, oldVal)
                     }
-                }).catch(this.log.bind(this))
+                })
 
                 return true;
             }
@@ -104,7 +106,7 @@ export default class Component extends HTMLElement {
         await (
             this.view.compiled
                 ? this.view.updateCompiled()
-                : this.view.compile(this.render(this.view))
+                : this.view.compile(this.template, this.styles)
         ).then(this.renderedCallback).catch(this.errorHandler);
     }
 
@@ -136,19 +138,17 @@ export default class Component extends HTMLElement {
         performance.clearMeasures(measure);
     }
 
-    log(event, data) {
+    log(event, ...data) {
+        if(!this.debug) return;
+        console.debug(`${this.constructor.name}: ${event}`, ...data);
+    }
 
-        if (event.constructor.name.includes('Error') || event.constructor.name.includes('Exception')) {
-            return console.error(`${this.constructor.name}:`, event);
-        }
+    errorHandler(...data) {
+        return console.error(`${this.constructor.name}:`, ...data);
+    }
 
-        if(this.debug || this.measurePerformance){
-            if (data) {
-                console.info(`${this.constructor.name}: ${event}`, data);
-            } else {
-                console.debug(`${this.constructor.name}: ${event}`);
-            }
-        }
+    dump(event, ...data) {
+        console.info(`${this.constructor.name}:`, ...data);
     }
 
     $emit(event, detail = {}, config = {}) {

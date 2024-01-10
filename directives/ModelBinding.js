@@ -3,15 +3,21 @@ import Directive from "./Directive.js";
 export default class ModelBinding extends Directive {
 
     bind() {
-        this.callback = this.wrapExpression(`${this.expression} = ($value || ${this.expression})`, '$value');
+        this.bindExpression(`${this.expression} = ($value !== undefined ? $value : ${this.expression})`, '$value');
         this.element.addEventListener('input', this.executeEvent.bind(this));
     }
 
     executeEvent($event) {
-        this.evaluate($event.target.value);
+        if(this.evaluated !== $event.target.value){
+            this.evaluate($event.target.value);
+        }
     }
 
     execute() {
-        this.element['value'] = this.evaluate(false);
+        const currentValue = this.evaluated;
+        const newValue = this.evaluate(undefined);
+        if(newValue !== currentValue){
+            this.element['value'] = newValue;
+        }
     }
 }

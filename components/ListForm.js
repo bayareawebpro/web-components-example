@@ -23,7 +23,7 @@ export default class ListForm extends Component {
         this.state.error = 'Min length is 4 letters.'
     }
 
-    render(_) {
+    get template() {
         return `
             <div class="form-wrapper">
                 <div class="form">
@@ -41,8 +41,14 @@ export default class ListForm extends Component {
                         Add Item
                     </button>
                 </div>
-                <p data-if="state.error" data-bind:text="state.error" class="error"></p>
-                <p data-else data-bind:text="state.value" class="info"></p>
+                <p 
+                    data-if="state.error" 
+                    data-bind:text="state.error" class="error">
+                </p>
+                <p 
+                    data-else 
+                    data-bind:text="state.value" class="info">
+                </p>
             </div>
         `;
     }

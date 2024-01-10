@@ -4,20 +4,25 @@ export default class DataBinding extends Directive {
 
     execute() {
 
-        const evaluated = this.evaluate();
+        const currentValue = this.evaluated;
+        const newValue = this.evaluate();
+
+        if(newValue === currentValue){
+            return;
+        }
 
         if (this.modifiers === 'text') {
-            return this.element.innerText = evaluated
+            return this.element.innerText = newValue;
         }
 
         if (this.modifiers === 'value') {
-            return this.element[this.modifiers] = evaluated
+            return this.element[this.modifiers] = newValue;
         }
 
-        if (typeof evaluated === 'boolean') {
-            return this.element.toggleAttribute(this.modifiers, evaluated)
+        if (typeof newValue === 'boolean') {
+            return this.element.toggleAttribute(this.modifiers, newValue);
         }
 
-        this.element.setAttribute(this.modifiers, evaluated)
+        this.element.setAttribute(this.modifiers, newValue);
     }
 }

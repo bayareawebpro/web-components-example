@@ -6,107 +6,133 @@ import ConditionBinding from "../directives/ConditionBinding.js";
 
 export default class Compiler {
 
-    constructor(component) {
+    constructor(scope, root = undefined) {
         this.template = document.createElement('template');
-        this.component = component;
         this.elements = new WeakMap;
         this.compiled = false;
-        this.nodes = null;
+        this.scope = scope;
+        this.root = root;
+        this.nodes = [];
     }
 
-    async compile(html) {
-        await this.addStyleSheet(this.component.styles.trim());
+    async compile(html, styles) {
+
+        if(styles){
+            await this.addStyleSheet(styles.trim());
+        }
+
         this.template.innerHTML = html.trim();
-        this.mapElements();
-        this.component.shadowRoot.replaceChildren(this.template.content);
-        this.nodes = this.component.shadowRoot.querySelectorAll(`*`);
+
+        this.mapElements(this.template.content.querySelectorAll(`*`));
+
+        this.root.replaceChildren(this.template.content);
+
+        this.nodes = this.root.querySelectorAll(`*`);
+
         await this.updateCompiled();
+
         this.compiled = true;
     }
 
-    mapElements() {
+    mapElements(nodeList = null) {
 
-        const nodes = this.template.content.querySelectorAll(`*`);
+        let prevCondition = null;
 
-        let ifCondition = null
-        for (const element of nodes) {
+        for (const el of nodeList) {
 
-            const attrs = [];
+            if(this.elements.has(el)){
+                continue;
+            }
+
+            const config = {
+                dirs: []
+            }
 
             // Some attributes are not iterable.
-            const attributes = Array.from(element.attributes);
+            const attributes = Array.from(el.attributes);
 
-            for (const attribute of attributes) {
-                if (attribute.localName.startsWith('on')) {
-                    attrs.push(new EventBinding(this.component, element, attribute));
-                } else if (attribute.localName.startsWith('data-bind')) {
-                    attrs.push(new DataBinding(this.component, element, attribute));
-                } else if (attribute.localName.startsWith('data-model')) {
-                    attrs.push(new ModelBinding(this.component, element, attribute));
-                } else if (attribute.localName.startsWith('data-if')) {
-                    attrs.push(ifCondition = new ConditionBinding(this.component, element, attribute));
-                } else if (attribute.localName.startsWith('data-else')) {
-                    const condition = new ConditionBinding(this.component, element, attribute);
-                    attrs.push(condition.newExpression(`!${ifCondition.expression}`));
-                    ifCondition = null
-                } else if (attribute.localName.startsWith('data-for')) {
-                    attrs.push(new LoopBinding(this.component, element, attribute));
+            for (const attr of attributes) {
+
+                const name = attr.localName;
+
+                if (name.startsWith('data-if')) {
+                    config.dirs.push(prevCondition = new ConditionBinding(el, attr, this.scope));
+
+                } else if (name.startsWith('data-else')) {
+
+                    config.dirs.push((new ConditionBinding(el, attr, this.scope)).inverseExpression(prevCondition));
+
+                    prevCondition = null
+
+                } else if (name.startsWith('data-for')) {
+                    config.dirs.push(new LoopBinding(el, attr, this.scope));
+                } else if (name.startsWith('on')) {
+                    config.dirs.push(new EventBinding(el, attr, this.scope));
+                } else if (name.startsWith('data-bind')) {
+                    config.dirs.push(new DataBinding(el, attr, this.scope));
+                } else if (name.startsWith('data-model')) {
+                    config.dirs.push(new ModelBinding(el, attr, this.scope));
                 }
             }
-            if (attrs.length) {
-                this.elements.set(element, {attrs})
+
+            if (config.dirs.length) {
+                this.elements.set(el, config);
+                //this.nodes.push(el);
             }
         }
     }
 
-    async updateCompiled() {
+    async updateCompiled(nodeList = null) {
 
-        const jobs = [];
+        const jobs = []
 
-        for (const node of this.nodes) {
+        nodeList = (nodeList || this.nodes);
+
+        for (const node of nodeList) {
 
             if (!this.elements.has(node)) {
                 continue;
             }
 
-            const {attrs} = this.elements.get(node);
+            const {dirs} = this.elements.get(node);
 
-            const createJob = (callback) => {
-                jobs.push(new Promise((resolve) => {
-                    try {
-                        callback();
-                        resolve();
-                    } catch (error) {
-                        this.component.log(error);
-                    }
-                }));
-            }
-
-            attrs.forEach((binding) => {
-                if (binding instanceof EventBinding) {
-                    return;
+            dirs.forEach((binding) => {
+                if (!(binding instanceof EventBinding)) {
+                    jobs.push(this.createJob(binding));
                 }
-                createJob(binding.execute.bind(binding));
             });
         }
 
-        await Promise.allSettled(jobs).catch((error)=>{
-            this.component.log(error)
-        });
+        await Promise.allSettled(jobs);
+    }
+
+    /**
+     * @param binding
+     * @return {Promise<void>}
+     */
+    createJob(binding){
+        return new Promise((resolve, reject) => {
+            try {
+                binding.execute();
+                resolve();
+            } catch (error) {
+                reject(error);
+            }
+        })
     }
 
     async addStyleSheet(css) {
         const sheet = new CSSStyleSheet();
         await sheet.replace(css.replace('<style>', '').replace('</style>', ''));
-        this.component.shadowRoot.adoptedStyleSheets = [sheet];
+        this.root.adoptedStyleSheets = [sheet];
     }
 
     ref(selector) {
-        return this.component.shadowRoot.querySelector(selector)
+        return this.root.querySelector(selector)
     }
 
     walk(selector, callback) {
-        const children = this.component.shadowRoot.querySelectorAll(selector);
+        const children = this.root.querySelectorAll(selector);
 
         for (const [index, child] of children.entries()) {
             callback(child, index);

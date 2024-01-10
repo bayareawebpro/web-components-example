@@ -30,7 +30,7 @@ export default class ListItem extends Component {
         this.$emit('custom-list:remove', item)
     }
 
-    render(_) {
+    get template() {
 
         return `
             <li data-if="state.editing">
@@ -39,8 +39,7 @@ export default class ListItem extends Component {
                     part="input"
                     autofocus
                     placeholder="Enter text..."
-                    oninput="state.item.value = $event.target.value"
-                    data-bind:value="state.item.value">
+                    data-model="state.item.value">
                 <button
                     type="button"
                     part="btn-green"
