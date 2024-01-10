@@ -73,7 +73,7 @@ export default class List extends Component {
                 <ul>
                     <template data-for="item of state.items">
                         <custom-list-item 
-                            data-key="item.id"
+                            data-bind:key="item.id"
                             data-state:item="item">
                         </custom-list-item>
                     </template>

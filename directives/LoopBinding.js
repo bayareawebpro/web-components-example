@@ -1,5 +1,6 @@
 import Directive from "./Directive.js";
 import Component from "../components/Component.js";
+import Compiler from "../utilities/Compiler.js";
 
 const statements = {
     ARR: ' of ',
@@ -16,6 +17,7 @@ const statements = {
 /**
  * @class LoopBinding
  * @property {Modifiers} modifiers
+ * @property {HTMLTemplateElement} loopedElement
  */
 export default class LoopBinding extends Directive {
 
@@ -32,10 +34,32 @@ export default class LoopBinding extends Directive {
             dataName,
             expectsArray,
         };
+
+        this.loopedElement = this.element.content.firstElementChild;
+
+        this.compiler = new Compiler({
+            errorHandler: this.scope.errorHandler,
+        }, this.element.parentElement);
     }
 
     bind(){
         this.bindExpression(this.modifiers.dataName);
+    }
+
+    createChild(stateVal){
+
+        // Set the scope for every binding.
+        // with an object property that matches
+        // the key used in the loop scope.
+        const scope = {};
+        scope[this.modifiers.itemName] = stateVal;
+
+        //child.addEventListener('connected',({target})=>this.compiler.updateCompiled(this.compiler.elements.get(target)));
+        return this.compiler.mapElement(this.loopedElement.cloneNode(), {scope});
+    }
+
+    onConnected(component, stateVal){
+        component.setState(this.modifiers.itemName,  stateVal);
     }
 
     getChildren(){
@@ -44,78 +68,53 @@ export default class LoopBinding extends Directive {
             .filter((child)=>!child.isSameNode(this.element));
     }
 
-    createChild(stateVal){
-        const child = this.element.content.firstElementChild.cloneNode();
-
-        const connectedCallback = ({target})=>{
-            target.setState(this.modifiers.itemName,  stateVal);
-            child.removeEventListener('connected',connectedCallback);
-        }
-        child.addEventListener('connected',connectedCallback);
-
-        return child;
-    }
-
     /**
-     * @param {Object} value
      * @param {HTMLElement} child
+     * @param {Object} value
      */
     getChildKey(value, child){
 
-        if(child.dataset.id){
+        if(child.dataset?.id){
             return child.dataset.id;
         }
 
-        if(!child.dataset.key){
+        if(!this.loopedElement.dataset.key){
             throw new Error(`ForLoop (${this.expression}) requires data-key="${this.modifiers.itemName}.{your_id}" attribute.`)
         }
-
-        //console.log(child.attributes['data-key'])
-
-        // this.toExpression()
-        //
-        // if(!value[keyName]){
-        //     throw new Error(`ForLoop (${this.expression}) data-key="${keyName}" has no matching property in loop item.`)
-        // }
-        //
-        // child.dataset.key
-        //data-prop:item="item"
-        //data-key="item.id"
     }
 
     execute(){
+
         const value = this.evaluate();
         const children = this.getChildren();
 
-
         if(!children.length){
-            const children = value.map((stateVal)=>this.createChild(stateVal));
-            this.element.parentElement.append(...children);
-
-            //children
-            return;
+            this.compiler.append(...value.slice(children.length).map((stateVal)=>this.createChild(stateVal)));
         }
-
-        // create | setKey | appendChild |
-
-        // [0, 1, undefined, 3]
-
-        value.forEach( (stateVal, index)=>{
-
-            if(typeof children.at(index) === 'undefined'){
-                const child = this.createChild(stateVal);
-                this.element.parentElement.appendChild(child);
-                //this.getChildKey(stateVal, child);
-                return;
-            }
-            this.updateChild(children.at(index), index, stateVal);
-        });
 
         if(value.length < children.length){
-            children.slice(value.length).forEach((child, index)=>{
-                child.remove()
+            children.forEach((child, index)=>{
+
+                const config = this.compiler.elements.get(child);
+
+                if(child.dataset.key){
+                    this.compiler.remove(child);
+                    console.log(`${index} removed.`)
+                }
+
+                // if(!value.at(index)){
+                //     this.compiler.remove(child);
+                //     console.log(`${index} removed.`)
+                // }
             });
         }
+        // value.forEach((stateVal, index)=>{
+        //     this.updateChild(children.at(index), index, stateVal);
+        // });
+
+        this.compiler.updateCompiled().then(()=>{
+            //console.log(this.compiler)
+        });
     }
 
     updateChild(child,index,stateVal){

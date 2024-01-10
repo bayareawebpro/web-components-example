@@ -99,4 +99,12 @@ export default class Directive{
     evaluate(...data){
         return this.evaluated = this.callExpression(this.callback, ...data);
     }
+
+    get styles(){
+        return getComputedStyle(this.element);
+    }
+
+    get elementVisible(){
+        return this.styles.display === 'none'
+    }
 }

@@ -17,7 +17,7 @@ export default class Component extends HTMLElement {
         this.logMutations = false;
         this.dependencies = new Map;
         this.measurePerformance = false;
-        this.lockedForStateUpdate = true;
+        this.lockedForStateUpdate = false;
         this.errorHandler = this.errorHandler.bind(this);
         this.renderedCallback = this.rendered.bind(this);
         this.props = this.watch(this.props || {});
@@ -70,7 +70,6 @@ export default class Component extends HTMLElement {
 
                 const oldHash = this.dependencies.get(key);
                 const newHash = JSON.stringify(newVal);
-                const expired = target[key];
 
                 if (oldHash === newHash) {
                     if (this.logMutations) {
@@ -82,10 +81,11 @@ export default class Component extends HTMLElement {
                 this.dependencies.set(key, newHash);
                 target[key] = newVal;
 
+                if (this.logMutations) {
+                    this.log(`State Mutated: ${key}`);
+                }
+
                 this.update().then(()=>{
-                    if (this.logMutations) {
-                        this.log(`State Mutated: ${key}`, newVal);
-                    }
                     if(typeof callback === 'function'){
                         callback(newVal, oldVal)
                     }
@@ -186,9 +186,11 @@ export default class Component extends HTMLElement {
 
     disconnectedCallback() {
         this.beforeDestroy();
-        this.dependencies = null;
-        this.props = null;
-        this.state = null;
-        this.view = null;
+        this.errorHandler = undefined;
+        this.renderedCallback = undefined;
+        this.dependencies = undefined;
+        this.props = undefined;
+        this.state = undefined;
+        this.view = undefined;
     }
 }

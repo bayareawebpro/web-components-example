@@ -2,10 +2,6 @@ import Directive from "./Directive.js";
 
 export default class ConditionBinding extends Directive {
 
-    get styles(){
-        return getComputedStyle(this.element);
-    }
-
     parse() {
         this.modifiers = {display: this.styles.display};
     }

@@ -4,6 +4,7 @@ export default class ListItem extends Component {
 
     constructor() {
         super();
+        this.debug = this.logMutations = true;
     }
 
     get data() {
