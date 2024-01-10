@@ -19,7 +19,6 @@ export default class Component extends HTMLElement {
         this.measurePerformance = false;
         this.lockedForStateUpdate = false;
         this.errorHandler = this.errorHandler.bind(this);
-        this.renderedCallback = this.rendered.bind(this);
         this.props = this.watch(this.props || {});
         this.state = this.watch(this.data);
         this.view = new Compiler(this, this.attachShadow({
@@ -34,10 +33,6 @@ export default class Component extends HTMLElement {
 
     setup() {
         // Setup Listeners
-    }
-
-    updated() {
-        // ?
     }
 
     beforeDestroy() {
@@ -78,6 +73,7 @@ export default class Component extends HTMLElement {
                     return true;
                 }
 
+
                 this.dependencies.set(key, newHash);
                 target[key] = newVal;
 
@@ -85,34 +81,31 @@ export default class Component extends HTMLElement {
                     this.log(`State Mutated: ${key}`);
                 }
 
-                this.update().then(()=>{
-                    if(typeof callback === 'function'){
-                        callback(newVal, oldVal)
-                    }
-                })
+                this.update()
+
+                if(typeof callback === 'function'){
+                    callback(newVal, oldVal)
+                }
 
                 return true;
             }
         })
     }
 
-    async update() {
+    update() {
         if (this.lockedForStateUpdate) {
             return;
         }
 
         this.performanceMark('compile');
 
-        await (
-            this.view.compiled
+        try{
+            this.view.rendered
                 ? this.view.updateCompiled()
                 : this.view.compile(this.template, this.styles)
-        ).then(this.renderedCallback).catch(this.errorHandler);
-    }
-
-    rendered(){
-        this.performanceMeasure('compile', 'rendered');
-        this.updated()
+        }catch (error){
+            this.errorHandler(error);
+        }
     }
 
     performanceMark(name){
@@ -131,7 +124,7 @@ export default class Component extends HTMLElement {
 
         const measurement = performance.measure(measure, first, last);
 
-        this.log(`${start}:${end} in ${measurement.duration}ms`);
+        this.log(`${start}:${end} in ${measurement.duration.toFixed(2)}ms`);
 
         performance.clearMarks(first);
         performance.clearMarks(last);
@@ -167,7 +160,7 @@ export default class Component extends HTMLElement {
             callback.call();
             this.lockedForStateUpdate = false;
             if (reRender) {
-                this.update().catch(this.errorHandler);
+                this.update();
             }
         }
     }
@@ -180,7 +173,7 @@ export default class Component extends HTMLElement {
     connectedCallback() {
         this.setup();
         this.batchUpdate(() => {
-            this.$emit('connected');
+            this.$emit('connected')
         });
     }
 

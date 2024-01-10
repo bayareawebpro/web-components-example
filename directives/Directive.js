@@ -105,6 +105,6 @@ export default class Directive{
     }
 
     get elementVisible(){
-        return this.styles.display === 'none'
+        return this.styles.display !== 'none'
     }
 }

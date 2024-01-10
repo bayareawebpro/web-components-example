@@ -1,10 +1,21 @@
-export function factory(times, callback) {
-    const values = [];
-    while (times > 0) {
-        values.push(callback());
-        times--;
+
+
+export function factory(times) {
+    const adjectives = ["pretty", "large", "big", "small", "tall", "short", "long", "handsome", "plain", "quaint", "clean", "elegant", "easy", "angry", "crazy", "helpful", "mushy", "odd", "unsightly", "adorable", "important", "inexpensive", "cheap", "expensive", "fancy"],
+        colours = ["red", "yellow", "blue", "green", "pink", "brown", "purple", "brown", "white", "black", "orange"],
+        nouns = ["table", "chair", "house", "bbq", "desk", "car", "pony", "cookie", "sandwich", "burger", "pizza", "mouse", "keyboard"];
+
+    function _random (max) { return Math.round(Math.random() * 1000) % max; }
+
+    let data = new Array(times);
+    for (let i = 0; i < times; i++) {
+        data[i] = {
+            id: uuid(),
+            value: `${adjectives[_random(adjectives.length)]} ${colours[_random(colours.length)]} ${nouns[_random(nouns.length)]}`,
+            editing: false,
+        }
     }
-    return values;
+    return data;
 }
 
 export function camelCase(str) {

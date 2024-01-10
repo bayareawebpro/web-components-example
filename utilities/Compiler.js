@@ -11,15 +11,15 @@ export default class Compiler {
         this.template = document.createElement('template');
         this.prevCond = undefined;
         this.elements = new Map;
-        this.compiled = false;
+        this.rendered = false;
         this.scope = scope;
         this.root = root;
     }
 
-    async compile(html, styles) {
+    compile(html, styles) {
 
         if(styles){
-            await this.addStyleSheet(styles.trim());
+            this.addStyleSheet(styles.trim());
         }
 
         if(html){
@@ -30,7 +30,7 @@ export default class Compiler {
 
         this.root.replaceChildren(this.template.content);
 
-        await this.updateCompiled();
+        this.updateCompiled();
     }
 
     mapElements(nodeList) {
@@ -79,7 +79,7 @@ export default class Compiler {
         return node;
     }
 
-    async updateCompiled(...elements) {
+    updateCompiled(...elements) {
 
         const jobs = []
 
@@ -88,14 +88,23 @@ export default class Compiler {
         for (const config of elements) {
             config.dirs.forEach((binding) => {
                 if (!(binding instanceof EventBinding)) {
-                    jobs.push(this.createJob(binding));
+                    binding.execute();
+                    //jobs.push(this.createJob(binding));
                 }
             });
         }
 
-        await Promise.allSettled(jobs).then((results)=>{
+        this.processJobs(jobs);
+    }
 
-            this.compiled = true;
+    processJobs(jobs){
+
+        Promise.allSettled(jobs).then((results)=>{
+            this.rendered = true;
+
+            if(typeof this.scope.performanceMeasure === 'function'){
+                this.scope.performanceMeasure('compile', 'rendered');
+            }
 
             const failed = results.find(({status})=> status === 'rejected');
 
@@ -123,9 +132,9 @@ export default class Compiler {
         })
     }
 
-    async addStyleSheet(css) {
+    addStyleSheet(css) {
         const sheet = new CSSStyleSheet();
-        await sheet.replace(css.replace('<style>', '').replace('</style>', ''));
+        sheet.replace(css.replace('<style>', '').replace('</style>', ''));
         this.root.adoptedStyleSheets = [sheet];
     }
 
@@ -138,12 +147,9 @@ export default class Compiler {
     }
 
     /**
-     * @param {HTMLElement} children
+     * @param {HTMLElement|DocumentFragment} children
      */
     append(...children){
-        if(!this.compiled){
-            this.mapElements(children);
-        }
         this.root.append(...children);
     }
 

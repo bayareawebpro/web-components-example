@@ -38,6 +38,7 @@ export default class LoopBinding extends Directive {
         this.loopedElement = this.element.content.firstElementChild;
 
         this.compiler = new Compiler({
+            log: this.scope.log,
             errorHandler: this.scope.errorHandler,
         }, this.element.parentElement);
     }
@@ -54,8 +55,12 @@ export default class LoopBinding extends Directive {
         const scope = {};
         scope[this.modifiers.itemName] = stateVal;
 
-        //child.addEventListener('connected',({target})=>this.compiler.updateCompiled(this.compiler.elements.get(target)));
-        return this.compiler.mapElement(this.loopedElement.cloneNode(), {scope});
+        const child = this.compiler.mapElement(this.loopedElement.cloneNode(true), {scope});
+
+        child.addEventListener('connected',({target})=>{
+            this.compiler.updateCompiled(this.compiler.elements.get(target))
+        });
+        return child;
     }
 
     onConnected(component, stateVal){
@@ -89,37 +94,39 @@ export default class LoopBinding extends Directive {
         const children = this.getChildren();
 
         if(!children.length){
-            this.compiler.append(...value.slice(children.length).map((stateVal)=>this.createChild(stateVal)));
+            // const fragment = new DocumentFragment();
+            // fragment.append(...value.map((stateVal)=>this.createChild(stateVal)));
+            // this.compiler.append(fragment);
+            //value.map((stateVal)=>this.createChild(stateVal))
+            this.compiler.append(...value.map((stateVal)=>this.createChild(stateVal)));
+            return;
         }
 
-        if(value.length < children.length){
-            children.forEach((child, index)=>{
-
-                const config = this.compiler.elements.get(child);
-
-                if(child.dataset.key){
-                    this.compiler.remove(child);
-                    console.log(`${index} removed.`)
-                }
-
-                // if(!value.at(index)){
-                //     this.compiler.remove(child);
-                //     console.log(`${index} removed.`)
-                // }
-            });
-        }
+        // if(value.length < children.length){
+        //     children.forEach((child, index)=>{
+        //
+        //         const config = this.compiler.elements.get(child);
+        //
+        //         console.log(child.dataset)
+        //
+        //         if(child.dataset.key){
+        //             this.compiler.remove(child);
+        //             console.log(`${index} removed.`)
+        //         }
+        //
+        //         // if(!value.at(index)){
+        //         //     this.compiler.remove(child);
+        //         //     console.log(`${index} removed.`)
+        //         // }
+        //     });
+        // }
         // value.forEach((stateVal, index)=>{
         //     this.updateChild(children.at(index), index, stateVal);
         // });
 
-        this.compiler.updateCompiled().then(()=>{
-            //console.log(this.compiler)
-        });
-    }
-
-    updateChild(child,index,stateVal){
-        if(child instanceof Component){
-            child.setState(this.modifiers.itemName,  stateVal);
+        if(this.compiler.rendered){
+            this.compiler.updateCompiled();
         }
+
     }
 }

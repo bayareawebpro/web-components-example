@@ -7,11 +7,8 @@ export default class StateBinding extends Directive {
 
     }
     execute() {
-
-        if(!(this.element instanceof Component)){
-            throw new Error('Cannot bind state to non-component Element.')
+        if(this.element instanceof Component){
+            this.element.setState(this.expression, this.evaluate());
         }
-
-        this.element.setState(this.expression, this.evaluate());
     }
 }

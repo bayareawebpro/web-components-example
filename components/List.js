@@ -15,10 +15,7 @@ export default class List extends Component {
 
     get data() {
         return {
-            items: this.props.items || factory(500, () => ({
-                id: uuid(),
-                value: uuid(),
-            }))
+            items: this.props.items || factory(30)
         }
     }
 

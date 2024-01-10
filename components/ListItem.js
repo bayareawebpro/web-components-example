@@ -4,13 +4,14 @@ export default class ListItem extends Component {
 
     constructor() {
         super();
-        this.debug = this.logMutations = true;
+        this.debug = true;
+        this.logMutations = true;
     }
 
     get data() {
         return {
             editing: false,
-            item: {value: 'Whoops: Item prop not loaded.'}
+            item: {value: 'Whoops: Item not loaded.'}
         }
     }
 

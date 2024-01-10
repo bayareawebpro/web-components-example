@@ -10,7 +10,7 @@ export default class ConditionBinding extends Directive {
         this.element.style.display = visible ? this.modifiers.display : 'none'
     }
 
-    execute(nextMap){
+    execute(){
         this.update(this.evaluate());
     }
 }
