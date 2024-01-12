@@ -19,8 +19,6 @@ export default class Component extends HTMLElement {
         this.measurePerformance = false;
         this.lockedForStateUpdate = false;
         this.errorHandler = this.errorHandler.bind(this);
-        this.props = this.watch(this.props || {});
-        this.state = this.watch(this.data);
         this.view = new Compiler(this, this.attachShadow({
             mode: 'open',
             delegatesFocus: true
@@ -61,6 +59,7 @@ export default class Component extends HTMLElement {
                 return prop in target ? target[prop] : null;
             },
             set: (target, key, newVal) => {
+
                 const oldVal = target[key];
 
                 const oldHash = this.dependencies.get(key);
@@ -72,7 +71,6 @@ export default class Component extends HTMLElement {
                     }
                     return true;
                 }
-
 
                 this.dependencies.set(key, newHash);
                 target[key] = newVal;
@@ -172,6 +170,8 @@ export default class Component extends HTMLElement {
 
     connectedCallback() {
         this.setup();
+        this.props = this.watch(this.props || {});
+        this.state = this.watch(this.data);
         this.batchUpdate(() => {
             this.$emit('connected')
         });
@@ -180,7 +180,6 @@ export default class Component extends HTMLElement {
     disconnectedCallback() {
         this.beforeDestroy();
         this.errorHandler = undefined;
-        this.renderedCallback = undefined;
         this.dependencies = undefined;
         this.props = undefined;
         this.state = undefined;

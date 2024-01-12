@@ -24,14 +24,9 @@ export default class Compiler {
         this.template =  document.createElement('template');
         this.template.innerHTML = html.trim();
 
-        // Get all components in tree.       //
-        // const comps = this.template.querySelectorAll(":not(:defined)")
-        //
-        // for(const comp of comps){
-        //     customElements.upgrade(comp);
-        // }
 
         this.mapElements( this.template.content.querySelectorAll(`*`));
+
         this.root.replaceChildren(this.template.content);
 
         this.updateCompiled();
@@ -93,17 +88,20 @@ export default class Compiler {
             config.dirs.forEach((binding) => {
                 if (!(binding instanceof EventBinding)) {
                     jobs.push(this.createJob(binding));
-                    //binding.execute()
                 }
             });
         }
 
-        return this.processJobs(jobs);
+       return this.processJobs(jobs);
     }
 
     processJobs(jobs){
         return Promise.allSettled(jobs).then((results)=>{
             this.rendered = true;
+
+            if(!this.scope.debug){
+                return;
+            }
 
             if(typeof this.scope.performanceMeasure === 'function'){
                 this.scope.performanceMeasure('compile', 'rendered');

@@ -67,10 +67,7 @@ export default class List extends Component {
                     data-bind:key="item.id"
                     data-state:item="item">
                 </custom-list-item>
-<!--                <custom-skeleton-->
-<!--                    data-bind:key="item.id"-->
-<!--                    data-state:item="item">-->
-<!--                </custom-list-item>-->
+                
             </template>
         </ul>
         `;

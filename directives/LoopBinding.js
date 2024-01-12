@@ -54,6 +54,7 @@ export default class LoopBinding extends Directive {
 
     bind() {
         this.bindExpression(this.modifiers.dataName);
+
     }
 
     createChild(stateVal) {
@@ -68,17 +69,6 @@ export default class LoopBinding extends Directive {
 
         return child;
     }
-
-    onConnected(component, stateVal) {
-        component.setState(this.modifiers.itemName, stateVal);
-    }
-
-    getChildren() {
-        return Array
-            .from(this.element.parentElement.children)
-            .filter((child) => !child.isSameNode(this.element));
-    }
-
 
     createItemScope(value) {
         // Set the scope for every loop iteration.
@@ -101,24 +91,9 @@ export default class LoopBinding extends Directive {
         const values = this.evaluate();
 
         if (!this.compiler.rendered) {
-
-            const jobs = values.map((stateVal) => {
-                const child = this.createChild(stateVal)
-                this.compiler.append(child)
-                // return this.compiler.createJob({
-                //     execute: () =>
-                // });
-            })
-
-            //const comps = this.compiler.root.querySelectorAll(":not(:defined)")
-            // Array.from(comps).map((comp) => customElements.whenDefined(comp.localName));
-            //
-            // for(const comp of comps){
-            //     customElements.upgrade(comp);
-            // }
-
-            //this.compiler.processJobs(jobs);
-            //this.compiler.updateCompiled();
+            this.compiler.append(...values.map((stateVal) => {
+                return this.createChild(stateVal);
+            }));
             return;
         }
 
