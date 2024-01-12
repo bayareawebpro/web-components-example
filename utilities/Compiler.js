@@ -32,7 +32,7 @@ export default class Compiler {
         // }
 
         this.mapElements( this.template.content.querySelectorAll(`*`));
-        this.root.appendChild(this.template.content);
+        this.root.replaceChildren(this.template.content);
 
         this.updateCompiled();
     }
