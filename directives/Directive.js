@@ -1,7 +1,7 @@
 
 
 /**
- * @param {undefined|Object} scope
+ * @param {undefined|Object} config
  * @param {HTMLElement} element
  * @param {Attr} attr
  *
@@ -14,9 +14,9 @@
  */
 export default class Directive{
 
-    constructor(element, attr, scope) {
+    constructor(element, attr, config) {
         this.element = element;
-        this.scope = scope;
+        this.config = config;
         this.callback = undefined;
         this.evaluated = undefined;
         this.attribute = attr.localName;
@@ -61,20 +61,6 @@ export default class Directive{
     }
 
     /**
-     * @param {ConditionBinding|null} prevCondition
-     * @return {this}
-     */
-    inverseExpression(prevCondition){
-
-        if(prevCondition.directive !== 'if'){
-            throw new Error(`ConditionBinding ${this.attribute} does not have corresponding data-if directive.`);
-        }
-
-        this.callback = this.createExpression(this.expression = `!${prevCondition.expression}`);
-        return this;
-    }
-
-    /**
      * @param {string} exp
      * @param {...string} data
      * @return {Function}
@@ -89,7 +75,7 @@ export default class Directive{
      * @return {*}
      */
     callExpression(callback, ...data){
-        return callback?.call(this.scope, this.scope,...data);
+        return callback?.call(this.config.scope, this.config.scope,...data);
     }
 
     /**

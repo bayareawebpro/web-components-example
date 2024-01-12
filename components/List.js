@@ -15,7 +15,7 @@ export default class List extends Component {
 
     get data() {
         return {
-            items: this.props.items || factory(30)
+            items: this.props.items || factory(1000)
         }
     }
 
@@ -39,43 +39,40 @@ export default class List extends Component {
                 value: event.detail.value
             }
             this.state.items.unshift(row);
-            this.log('Added Row', row);
             this.view.ref('ul').scrollTo(0, 0);
+            this.log('Added Row');
         })
     }
 
     updateItem({detail}) {
-        this.batchUpdate(() => {
-            const index = this.state.items.findIndex((item) => item.id === detail.id);
-            this.state.items.splice(index, 1, detail);
-            this.log('Updated Row', detail);
-        }, false)
+        const index = this.state.items.findIndex((item) => item.id === detail.id);
+        this.state.items.splice(index, 1, detail);
+        this.log('Updated Row');
     }
 
     removeItem({detail}) {
-        this.batchUpdate(() => {
-            const index = this.state.items.findIndex((item) => item.id === detail.id);
-            this.state.items.splice(index, 1);
-            this.log('Removed Row', detail);
-        })
+        this.state.items = this.state.items.filter((item) => item.id !== detail.id);
+        this.log('Removed Row');
     }
 
     get template() {
         return `
-            <div class="wrapper">
-                <custom-list-form></custom-list-form>
-                <div class="list-info">
-                    <span data-bind:text="state.items.length"></span> items
-                </div>
-                <ul>
-                    <template data-for="item of state.items">
-                        <custom-list-item 
-                            data-bind:key="item.id"
-                            data-state:item="item">
-                        </custom-list-item>
-                    </template>
-                </ul>
-            </div>
+        <custom-list-form></custom-list-form>
+        <div class="list-info">
+            <span data-bind:text="state.items.length"></span> items
+        </div>
+        <ul>
+            <template data-for="item of state.items">
+                <custom-list-item 
+                    data-bind:key="item.id"
+                    data-state:item="item">
+                </custom-list-item>
+<!--                <custom-skeleton-->
+<!--                    data-bind:key="item.id"-->
+<!--                    data-state:item="item">-->
+<!--                </custom-list-item>-->
+            </template>
+        </ul>
         `;
     }
 
@@ -83,31 +80,25 @@ export default class List extends Component {
         return `
             <style>
             :host{
+                height: 100%;
+                background-color: #fefefe;
+                text-align: left;
+                padding: 2rem;
                 display: flex;
                 flex-direction: column;
-                box-sizing: border-box;
-                max-height: 100vh;
+                flex-grow: 1;
             }
-            .wrapper{
-                padding: 2rem;
-                background-color: #f3f3f3;
-                text-align: left;
-            }
-            
             .list-info{
                 padding: 0.2rem 0;
-                flex-shrink: 0;
+                flex-shrink: 1;
             }
-            
             ul{
                 list-style: none;
                 flex-direction: column;
                 overflow-y: scroll;
                 scroll-behavior: smooth;
-                flex-grow: 1;
                 box-shadow: rgba(0,0,0,0.3) inset 0 0 5px;
                 padding: 0.9rem;
-                max-height: 100%;
             }
             </style>
         `;

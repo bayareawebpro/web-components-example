@@ -2,13 +2,12 @@ import DataBinding from "../directives/DataBinding.js";
 import LoopBinding from "../directives/LoopBinding.js";
 import EventBinding from "../directives/EventBinding.js";
 import ModelBinding from "../directives/ModelBinding.js";
-import ConditionBinding from "../directives/ConditionBinding.js";
 import StateBinding from "../directives/StateBinding.js";
+import ConditionBinding from "../directives/ConditionBinding.js";
 
 export default class Compiler {
 
     constructor(scope, root = undefined) {
-        this.template = document.createElement('template');
         this.prevCond = undefined;
         this.elements = new Map;
         this.rendered = false;
@@ -22,13 +21,18 @@ export default class Compiler {
             this.addStyleSheet(styles.trim());
         }
 
-        if(html){
-            this.template.innerHTML = html.trim();
-        }
+        this.template =  document.createElement('template');
+        this.template.innerHTML = html.trim();
 
-        this.mapElements(this.template.content.querySelectorAll(`*`));
+        // Get all components in tree.       //
+        // const comps = this.template.querySelectorAll(":not(:defined)")
+        //
+        // for(const comp of comps){
+        //     customElements.upgrade(comp);
+        // }
 
-        this.root.replaceChildren(this.template.content);
+        this.mapElements( this.template.content.querySelectorAll(`*`));
+        this.root.appendChild(this.template.content);
 
         this.updateCompiled();
     }
@@ -55,20 +59,20 @@ export default class Compiler {
             const name = attr.localName;
 
             if (name.startsWith('data-if')) {
-                config.dirs.push(this.prevCond = new ConditionBinding(node, attr, config.scope));
+                config.dirs.push(this.prevCond = new ConditionBinding(node, attr, config));
             } else if (name.startsWith('data-else')) {
-                config.dirs.push((new ConditionBinding(node, attr, config.scope)).inverseExpression(this.prevCond));
+                config.dirs.push((new ConditionBinding(node, attr, config)).inverseExpression(this.prevCond));
                 this.prevCond = null
             } else if (name.startsWith('data-for')) {
-                config.dirs.push(new LoopBinding(node, attr, config.scope));
+                config.dirs.push(new LoopBinding(node, attr, config));
             } else if (name.startsWith('on')) {
-                config.dirs.push(new EventBinding(node, attr, config.scope));
+                config.dirs.push(new EventBinding(node, attr, config));
             } else if (name.startsWith('data-bind')) {
-                config.dirs.push(new DataBinding(node, attr, config.scope));
+                config.dirs.push(new DataBinding(node, attr, config));
             } else if (name.startsWith('data-model')) {
-                config.dirs.push(new ModelBinding(node, attr, config.scope));
+                config.dirs.push(new ModelBinding(node, attr, config));
             }else if (name.startsWith('data-state')) {
-                config.dirs.push(new StateBinding(node, attr, config.scope));
+                config.dirs.push(new StateBinding(node, attr, config));
             }
         }
 
@@ -88,18 +92,17 @@ export default class Compiler {
         for (const config of elements) {
             config.dirs.forEach((binding) => {
                 if (!(binding instanceof EventBinding)) {
-                    binding.execute();
-                    //jobs.push(this.createJob(binding));
+                    jobs.push(this.createJob(binding));
+                    //binding.execute()
                 }
             });
         }
 
-        this.processJobs(jobs);
+        return this.processJobs(jobs);
     }
 
     processJobs(jobs){
-
-        Promise.allSettled(jobs).then((results)=>{
+        return Promise.allSettled(jobs).then((results)=>{
             this.rendered = true;
 
             if(typeof this.scope.performanceMeasure === 'function'){
@@ -151,6 +154,13 @@ export default class Compiler {
      */
     append(...children){
         this.root.append(...children);
+    }
+
+    /**
+     * @param {HTMLElement|DocumentFragment} children
+     */
+    prepend(...children){
+        this.root.prepend(...children);
     }
 
     ref(selector) {

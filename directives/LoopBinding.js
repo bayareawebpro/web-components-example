@@ -1,5 +1,4 @@
 import Directive from "./Directive.js";
-import Component from "../components/Component.js";
 import Compiler from "../utilities/Compiler.js";
 
 const statements = {
@@ -18,6 +17,9 @@ const statements = {
  * @class LoopBinding
  * @property {Modifiers} modifiers
  * @property {HTMLTemplateElement} loopedElement
+ * @property {Array} childKeys
+ * @property {string} childKeyName
+ * @property {Function} childKeyGetter
  */
 export default class LoopBinding extends Directive {
 
@@ -35,98 +37,175 @@ export default class LoopBinding extends Directive {
             expectsArray,
         };
 
+        this.compiler = new Compiler({
+            log: this.config.scope.log,
+            errorHandler: this.config.scope.errorHandler,
+        }, this.element.parentElement);
+
         this.loopedElement = this.element.content.firstElementChild;
 
-        this.compiler = new Compiler({
-            log: this.scope.log,
-            errorHandler: this.scope.errorHandler,
-        }, this.element.parentElement);
+        if (!this.loopedElement.dataset['bind:key']) {
+            throw new Error(`ForLoop (${this.expression}) requires data-key="${this.modifiers.itemName}.{your_id}" attribute.`)
+        }
+
+        this.childKeyName = this.loopedElement.dataset['bind:key'];
+        this.childKeyGetter = this.createExpression(this.loopedElement.dataset['bind:key']);
     }
 
-    bind(){
+    bind() {
         this.bindExpression(this.modifiers.dataName);
     }
 
-    createChild(stateVal){
+    createChild(stateVal) {
 
-        // Set the scope for every binding.
-        // with an object property that matches
-        // the key used in the loop scope.
-        const scope = {};
-        scope[this.modifiers.itemName] = stateVal;
+        const child = this.compiler.mapElement(this.loopedElement.cloneNode(true), {
+            scope: this.createItemScope(stateVal)
+        });
 
-        const child = this.compiler.mapElement(this.loopedElement.cloneNode(true), {scope});
-
-        child.addEventListener('connected',({target})=>{
+        child.addEventListener('connected', ({target}) => {
             this.compiler.updateCompiled(this.compiler.elements.get(target))
         });
+
         return child;
     }
 
-    onConnected(component, stateVal){
-        component.setState(this.modifiers.itemName,  stateVal);
+    onConnected(component, stateVal) {
+        component.setState(this.modifiers.itemName, stateVal);
     }
 
-    getChildren(){
+    getChildren() {
         return Array
             .from(this.element.parentElement.children)
-            .filter((child)=>!child.isSameNode(this.element));
+            .filter((child) => !child.isSameNode(this.element));
+    }
+
+
+    createItemScope(value) {
+        // Set the scope for every loop iteration.
+        // with an object property that matches
+        // the key used in the loop scope.
+        const scope = {};
+        scope[this.modifiers.itemName] = value;
+        return scope;
     }
 
     /**
-     * @param {HTMLElement} child
-     * @param {Object} value
+     * @param {Object} item
      */
-    getChildKey(value, child){
-
-        if(child.dataset?.id){
-            return child.dataset.id;
-        }
-
-        if(!this.loopedElement.dataset.key){
-            throw new Error(`ForLoop (${this.expression}) requires data-key="${this.modifiers.itemName}.{your_id}" attribute.`)
-        }
+    getItemKey(item) {
+        return this.childKeyGetter(this.createItemScope(item));
     }
 
-    execute(){
+    execute() {
 
-        const value = this.evaluate();
-        const children = this.getChildren();
+        const values = this.evaluate();
 
-        if(!children.length){
-            // const fragment = new DocumentFragment();
-            // fragment.append(...value.map((stateVal)=>this.createChild(stateVal)));
-            // this.compiler.append(fragment);
-            //value.map((stateVal)=>this.createChild(stateVal))
-            this.compiler.append(...value.map((stateVal)=>this.createChild(stateVal)));
+        if (!this.compiler.rendered) {
+
+            const jobs = values.map((stateVal) => {
+                const child = this.createChild(stateVal)
+                this.compiler.append(child)
+                // return this.compiler.createJob({
+                //     execute: () =>
+                // });
+            })
+
+            //const comps = this.compiler.root.querySelectorAll(":not(:defined)")
+            // Array.from(comps).map((comp) => customElements.whenDefined(comp.localName));
+            //
+            // for(const comp of comps){
+            //     customElements.upgrade(comp);
+            // }
+
+            //this.compiler.processJobs(jobs);
+            //this.compiler.updateCompiled();
             return;
         }
 
-        // if(value.length < children.length){
-        //     children.forEach((child, index)=>{
-        //
-        //         const config = this.compiler.elements.get(child);
-        //
-        //         console.log(child.dataset)
-        //
-        //         if(child.dataset.key){
-        //             this.compiler.remove(child);
-        //             console.log(`${index} removed.`)
-        //         }
-        //
-        //         // if(!value.at(index)){
-        //         //     this.compiler.remove(child);
-        //         //     console.log(`${index} removed.`)
-        //         // }
-        //     });
-        // }
-        // value.forEach((stateVal, index)=>{
-        //     this.updateChild(children.at(index), index, stateVal);
-        // });
+        const children = Array.from(this.compiler.elements.entries());
 
-        if(this.compiler.rendered){
-            this.compiler.updateCompiled();
+        if (values.length === children.length) {
+
+            const changed = [];
+
+            for (const [index, item] of values.entries()) {
+
+                const key = this.getItemKey(item);
+                const [child, config] = children.at(index);
+
+                if(key !== child.getAttribute('key')){
+                    config.scope = this.createItemScope(item);
+                    changed.push(config);
+                }
+            }
+            this.compiler.updateCompiled(...changed);
+            return;
         }
 
+        if (values.length < children.length) {
+
+            const childKeys = values.map((item) => this.getItemKey(item));
+
+            for (const [child] of children) {
+                if (!childKeys.includes(child.getAttribute('key'))) {
+                    this.compiler.remove(child);
+                }
+            }
+
+            return;
+        }
+
+        if (values.length > children.length) {
+
+            const elementKeys = children.map(([child]) =>child.getAttribute('key'));
+
+            let previousKey;
+
+            for (const [index, item] of values.entries()) {
+
+                const key = this.getItemKey(item);
+
+                if (elementKeys.includes(key)) {
+                    //console.log(`Item ${index}: key valid`)
+                    previousKey = key;
+                    continue;
+                }
+
+                if (index === 0) {
+                    //console.log(`Item ${index}: prepend`)
+                    const child = this.createChild(item);
+                    this.compiler.prepend(child);
+                    //this.compiler.updateCompiled(this.compiler.elements.get(child));
+                    children.unshift(child);
+                    elementKeys.unshift(key);
+                    previousKey = key;
+                    continue;
+                }
+
+                if(index === (values.length - 1)){
+                    //console.log(`Item ${index}: append`)
+                    const child = this.createChild(item);
+                    this.compiler.append(child);
+                    //this.compiler.updateCompiled(this.compiler.elements.get(child));
+                    continue;
+                }
+
+                if(!previousKey){
+                    //console.log(`Item ${index}: Not Found!`)
+                    continue;
+                }
+
+                const previousIndex = elementKeys.indexOf(previousKey);
+                const [previousChild] = children.at(previousIndex);
+                const child = this.createChild(item);
+
+                previousChild.insertAdjacentElement('afterend', child);
+                children.splice(previousIndex, 0, child);
+                elementKeys.splice(previousIndex, 0, previousKey = key);
+                //this.compiler.updateCompiled(this.compiler.elements.get(child));
+                //console.log(`Item ${index}: inserted`)
+
+            }
+        }
     }
 }

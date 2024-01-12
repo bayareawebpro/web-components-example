@@ -6,9 +6,26 @@
     <title>Web Components</title>
     <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
     <link rel="icon" href="./favicon.ico" type="image/x-icon">
+
+    <link rel="modulepreload" href="./utilities/index.js">
+    <link rel="modulepreload" href="./utilities/Compiler.js">
+
+    <link rel="modulepreload" href="./components/Component.js">
+    <link rel="modulepreload" href="./components/List.js">
+    <link rel="modulepreload" href="./components/ListItem.js">
+    <link rel="modulepreload" href="./components/ListForm.js">
+
+    <link rel="modulepreload" href="./directives/Directive.js">
+    <link rel="modulepreload" href="./directives/DataBinding.js">
+    <link rel="modulepreload" href="./directives/EventBinding.js">
+    <link rel="modulepreload" href="./directives/LoopBinding.js">
+    <link rel="modulepreload" href="./directives/ModelBinding.js">
+    <link rel="modulepreload" href="./directives/StateBinding.js">
+    <link rel="modulepreload" href="./directives/ConditionBinding.js">
+
+    <script type="module" src="./components/index.js"></script>
     <link rel="preload" href="./app.css" as="style">
     <link rel="stylesheet" href="./app.css">
-    <script type="module" src="./components/index.js" defer></script>
 </head>
 <body>
     <custom-list></custom-list>

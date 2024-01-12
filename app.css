@@ -13,6 +13,8 @@ html,body{
     text-align: center;
     font-family: sans-serif;
     background-color: white;
+    box-sizing: border-box;
+    height: 100%;
 }
 body{
     font-size: 1.2rem;
