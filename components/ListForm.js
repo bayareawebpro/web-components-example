@@ -28,6 +28,7 @@ export default class ListForm extends Component {
             <div class="form-wrapper">
                 <div class="form">
                     <input 
+                        autofocus
                         type="text" 
                         placeholder="Add Item..."
                         onkeyup="state.error = null"

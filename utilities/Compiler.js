@@ -18,18 +18,21 @@ export default class Compiler {
     compile(html, styles) {
 
         if(styles){
-            this.addStyleSheet(styles.trim());
+            this.addStyleSheet(styles);
         }
 
         this.template =  document.createElement('template');
         this.template.innerHTML = html.trim();
 
-
         this.mapElements( this.template.content.querySelectorAll(`*`));
+
+        if(this.scope instanceof HTMLElement){
+            this.scope.dataset.cloak = 'true';
+        }
 
         this.root.replaceChildren(this.template.content);
 
-        this.updateCompiled();
+        return this.updateCompiled();
     }
 
     mapElements(nodeList) {
@@ -99,6 +102,10 @@ export default class Compiler {
         return Promise.allSettled(jobs).then((results)=>{
             this.rendered = true;
 
+            if(this.scope instanceof HTMLElement){
+                delete this.scope.dataset.cloak;
+            }
+
             if(!this.scope.debug){
                 return;
             }
@@ -124,19 +131,40 @@ export default class Compiler {
      */
     createJob(binding){
         return new Promise((resolve, reject) => {
-            try {
-                binding.execute();
-                resolve();
-            } catch (error) {
-                reject(error);
-            }
+            queueMicrotask(() => {
+                try {
+                    binding.execute();
+                    resolve();
+                } catch (error) {
+                    reject(error);
+                }
+            });
         })
     }
 
     addStyleSheet(css) {
+
+        if(!css){
+            return;
+        }
+
+        const styleParser = new DOMParser();
+
+        const styleTag = styleParser
+            .parseFromString(css, "text/html")
+            .querySelector('style:first-of-type');
+
+        const style = `
+        [data-cloak="true"]{
+            display: none;
+        }
+        ${styleTag.textContent}
+        `;
+
         const sheet = new CSSStyleSheet();
-        sheet.replace(css.replace('<style>', '').replace('</style>', ''));
-        this.root.adoptedStyleSheets = [sheet];
+        sheet.replace(style).then(()=>{
+            this.root.adoptedStyleSheets = [sheet];
+        });
     }
 
     /**

@@ -90,7 +90,7 @@ export default class Component extends HTMLElement {
         })
     }
 
-    update() {
+    async update() {
         if (this.lockedForStateUpdate) {
             return;
         }
@@ -98,7 +98,7 @@ export default class Component extends HTMLElement {
         this.performanceMark('compile');
 
         try{
-            this.view.rendered
+            return this.view.rendered
                 ? this.view.updateCompiled()
                 : this.view.compile(this.template, this.styles)
         }catch (error){
@@ -131,7 +131,7 @@ export default class Component extends HTMLElement {
 
     log(event, ...data) {
         if(!this.debug) return;
-        console.debug(`${this.constructor.name}: ${event}`, ...data);
+        console.info(`${this.constructor.name}: ${event}`, ...data);
     }
 
     errorHandler(...data) {
@@ -153,13 +153,12 @@ export default class Component extends HTMLElement {
     }
 
     batchUpdate(callback, reRender = true) {
-        if (typeof callback === 'function') {
-            this.lockedForStateUpdate = true;
-            callback.call();
-            this.lockedForStateUpdate = false;
-            if (reRender) {
-                this.update();
-            }
+
+        this.lockedForStateUpdate = true;
+        callback.call();
+        this.lockedForStateUpdate = false;
+        if (reRender) {
+            return this.update();
         }
     }
 
@@ -169,11 +168,13 @@ export default class Component extends HTMLElement {
     }
 
     connectedCallback() {
-        this.setup();
-        this.props = this.watch(this.props || {});
-        this.state = this.watch(this.data);
-        this.batchUpdate(() => {
-            this.$emit('connected')
+        setTimeout(()=>{
+            this.setup();
+            this.props = this.watch(this.props || {});
+            this.state = this.watch(this.data);
+            this.batchUpdate(() => {
+                this.$emit('connected')
+            });
         });
     }
 

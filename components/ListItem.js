@@ -15,7 +15,11 @@ export default class ListItem extends Component {
     }
 
     toggleEdit() {
-        this.state.editing = !this.state.editing
+        this.batchUpdate(() => {
+            this.state.editing = !this.state.editing
+        }).then(() => {
+            this.view.ref('input').focus()
+        })
     }
 
     onUpdate() {
@@ -38,7 +42,6 @@ export default class ListItem extends Component {
                <input
                     type="text"
                     part="input"
-                    autofocus
                     placeholder="Enter text..."
                     data-model="state.item.value">
                 <button

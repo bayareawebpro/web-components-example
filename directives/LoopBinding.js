@@ -64,7 +64,9 @@ export default class LoopBinding extends Directive {
         });
 
         child.addEventListener('connected', ({target}) => {
-            this.compiler.updateCompiled(this.compiler.elements.get(target))
+            queueMicrotask(()=>{
+                this.compiler.updateCompiled(this.compiler.elements.get(target))
+            })
         });
 
         return child;
@@ -91,9 +93,9 @@ export default class LoopBinding extends Directive {
         const values = this.evaluate();
 
         if (!this.compiler.rendered) {
-            this.compiler.append(...values.map((stateVal) => {
-                return this.createChild(stateVal);
-            }));
+            queueMicrotask(()=>{
+                this.compiler.append(...values.map((stateVal)=>this.createChild(stateVal)));
+            })
             return;
         }
 
