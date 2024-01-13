@@ -4,7 +4,7 @@ export default class ListItem extends Component {
 
     constructor() {
         super();
-        this.measurePerformance = true;
+        this.debug = false;
     }
 
     get data() {
@@ -32,13 +32,37 @@ export default class ListItem extends Component {
     onRemove() {
         const {item} = this.state;
 
-        this.$emit('custom-list:remove', item)
+        this.view.ref('li:first-of-type').classList.add("fadeOut")
+
+        setTimeout(()=>{
+            this.$emit('custom-list:remove', item)
+        }, 200)
+    }
+
+    beforeDestroy() {
     }
 
     get template() {
 
         return `
-            <li data-if="state.editing">
+            <li data-if="!state.editing" class="fadeInRight">
+                <div part="preview" data-bind:text="state.item.value"></div>
+                <div part="actions">
+                    <button
+                        part="btn-blue"
+                        type="button"
+                        onclick="toggleEdit()">
+                        Edit
+                    </button>
+                    <button
+                        part="btn-red"
+                        type="button"
+                        onclick="onRemove()">
+                        Remove
+                    </button>
+                </div>
+            </li>
+            <li data-else class="fadeInLeft">
                <input
                     type="text"
                     part="input"
@@ -57,29 +81,60 @@ export default class ListItem extends Component {
                     Cancel
                 </button>
             </li>
-            <li data-else>
-                <div part="preview" data-bind:text="state.item.value"></div>
-                <div part="actions">
-                    <button
-                        part="btn-blue"
-                        type="button"
-                        onclick="toggleEdit()">
-                        Edit
-                    </button>
-                    <button
-                        part="btn-red"
-                        type="button"
-                        onclick="onRemove()">
-                        Remove
-                    </button>
-                </div>
-            </li>
         `;
     }
 
     get styles() {
         return `
             <style>
+            @keyframes fadeInRight {
+                0% {
+                    opacity: 0;
+                    transform: translateX(20px);
+                }
+                100% {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+            @keyframes fadeInLeft {
+                0% {
+                    opacity: 0;
+                    transform: translateX(-20px);
+                }
+                100% {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+            @keyframes fadeOut {
+                0% {
+                    opacity: 1;
+                }
+                100% {
+                    opacity: 0;
+                }
+            }
+            .fadeInRight,
+            .fadeInLeft,
+            .fadeOut {
+                animation-duration: 240ms;
+                animation-fill-mode: both;
+                -webkit-animation-duration: 240ms;
+                -webkit-animation-fill-mode: both;
+            }
+            .fadeInLeft {
+                animation-name: fadeInLeft;
+                -webkit-animation-name: fadeInLeft;
+            }
+            .fadeInRight {
+                animation-name: fadeInRight;
+                -webkit-animation-name: fadeInRight;
+            }
+            .fadeOut {
+                animation-name: fadeOut;
+                -webkit-animation-name: fadeOut;
+            }
             li{
                 display: flex;
                 align-items: center;

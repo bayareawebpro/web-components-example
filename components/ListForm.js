@@ -23,6 +23,10 @@ export default class ListForm extends Component {
         this.state.error = 'Min length is 4 letters.'
     }
 
+    get help(){
+        return this.state.value ? `Add: ${this.state.value}`  : 'Enter ToDo Item...'
+    }
+
     get template() {
         return `
             <div class="form-wrapper">
@@ -48,7 +52,7 @@ export default class ListForm extends Component {
                 </p>
                 <p 
                     data-else 
-                    data-bind:text="state.value" class="info">
+                    data-bind:text="help" class="info">
                 </p>
             </div>
         `;
@@ -74,6 +78,7 @@ export default class ListForm extends Component {
             .info{
                 margin: 0.4rem 0;
                 padding: 0;
+                color: #818283;
             }
             
             input{

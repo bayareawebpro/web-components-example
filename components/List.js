@@ -7,6 +7,7 @@ export default class List extends Component {
     constructor(props) {
         super(props);
         this.debug = this.measurePerformance = true;
+        this.logMutations = true;
     }
 
     static observedAttributes = [
@@ -15,7 +16,8 @@ export default class List extends Component {
 
     get data() {
         return {
-            items: this.props.items || factory(1000)
+            items: this.props.items || factory(5),
+            updated: false
         }
     }
 
@@ -34,14 +36,29 @@ export default class List extends Component {
 
     addItem(event) {
         this.batchUpdate(() => {
-            const row = {
+            this.state.items.unshift( {
                 id: uuid(),
                 value: event.detail.value
-            }
-            this.state.items.unshift(row);
-            this.view.ref('ul').scrollTo(0, 0);
+            });
+            // const first = this.state.items[0];
+            // const last = this.state.items[this.state.items.length-1];
+            //
+            //
+            // if(!this.state.updated){
+            //     first.value = 'first'
+            //     last.value = 'last'
+            //     this.state.updated = true
+            // }
+            // this.state.items = this.state.items
+            //     .toSpliced(0, 1,  last)
+            //     .toSpliced(this.state.items.length-1, 1,  first);
+            // this.state.items.push({
+            //     id: uuid(),
+            //     value: event.detail.value
+            // });
+
             this.log('Added Row');
-        })
+        }).then(()=>this.view.ref('ul').scrollTo(0, 0))
     }
 
     updateItem({detail}) {
@@ -52,7 +69,7 @@ export default class List extends Component {
 
     removeItem({detail}) {
         this.state.items = this.state.items.filter((item) => item.id !== detail.id);
-        this.log('Removed Row');
+        this.log('Removed Row', detail);
     }
 
     get template() {
@@ -67,11 +84,10 @@ export default class List extends Component {
                     data-bind:key="item.id"
                     data-state:item="item">
                 </custom-list-item>
-                <custom-skeleton 
-                    data-bind:key="item.id"
-                    data-state:item="item">
-                </custom-skeleton>
             </template>
+            <li data-if="!state.items.length">
+                Add items...
+            </li>
         </ul>
         `;
     }
@@ -97,8 +113,22 @@ export default class List extends Component {
                 flex-direction: column;
                 overflow-y: scroll;
                 scroll-behavior: smooth;
+                border-radius: 0.6rem;
                 box-shadow: rgba(0,0,0,0.3) inset 0 0 5px;
                 padding: 0.9rem;
+            }
+            li{
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 1rem;
+                border-radius: 4px;
+                background-color: #fefefe;
+                color: #3a6073;
+                align-self: center;
+                gap: 0.4rem;
+                flex-grow: 1;
+                font-size: 1.6rem;
             }
             </style>
         `;

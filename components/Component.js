@@ -15,10 +15,11 @@ export default class Component extends HTMLElement {
         this.uuid = uuid();
         this.debug = false;
         this.logMutations = false;
-        this.dependencies = new Map;
         this.measurePerformance = false;
         this.lockedForStateUpdate = false;
-        this.errorHandler = this.errorHandler.bind(this);
+        this.errorHandler = this.error.bind(this);
+        this.props = this.watch(this.props || {});
+        this.state = this.watch(this.data);
         this.view = new Compiler(this, this.attachShadow({
             mode: 'open',
             delegatesFocus: true
@@ -62,48 +63,32 @@ export default class Component extends HTMLElement {
 
                 const oldVal = target[key];
 
-                const oldHash = this.dependencies.get(key);
+                const oldHash = JSON.stringify(oldVal);
                 const newHash = JSON.stringify(newVal);
 
                 if (oldHash === newHash) {
                     if (this.logMutations) {
-                        this.log(`State Valid: ${key}`);
+                        this.log(`State Valid: ${key}`, {oldHash, newHash});
                     }
                     return true;
                 }
 
-                this.dependencies.set(key, newHash);
                 target[key] = newVal;
 
                 if (this.logMutations) {
                     this.log(`State Mutated: ${key}`);
                 }
 
-                this.update()
-
-                if(typeof callback === 'function'){
-                    callback(newVal, oldVal)
+                if(!this.lockedForStateUpdate){
+                    this.batchUpdate().then(()=>{
+                        if(callback instanceof Function){
+                            callback(newVal, oldVal)
+                        }
+                    })
                 }
-
                 return true;
             }
         })
-    }
-
-    async update() {
-        if (this.lockedForStateUpdate) {
-            return;
-        }
-
-        this.performanceMark('compile');
-
-        try{
-            return this.view.rendered
-                ? this.view.updateCompiled()
-                : this.view.compile(this.template, this.styles)
-        }catch (error){
-            this.errorHandler(error);
-        }
     }
 
     performanceMark(name){
@@ -123,10 +108,9 @@ export default class Component extends HTMLElement {
         const measurement = performance.measure(measure, first, last);
 
         this.log(`${start}:${end} in ${measurement.duration.toFixed(2)}ms`);
-
+        performance.clearMeasures(measure);
         performance.clearMarks(first);
         performance.clearMarks(last);
-        performance.clearMeasures(measure);
     }
 
     log(event, ...data) {
@@ -134,7 +118,7 @@ export default class Component extends HTMLElement {
         console.info(`${this.constructor.name}: ${event}`, ...data);
     }
 
-    errorHandler(...data) {
+    error(...data) {
         return console.error(`${this.constructor.name}:`, ...data);
     }
 
@@ -152,14 +136,20 @@ export default class Component extends HTMLElement {
         }));
     }
 
-    batchUpdate(callback, reRender = true) {
-
+    batchUpdate(callback = null, reRender = true) {
         this.lockedForStateUpdate = true;
-        callback.call();
-        this.lockedForStateUpdate = false;
-        if (reRender) {
-            return this.update();
+
+        if(callback instanceof Function){
+            callback();
         }
+
+        this.lockedForStateUpdate = false;
+
+        if (reRender) {
+            return this.view.update().catch(this.errorHandler);
+        }
+
+        return Promise.resolve();
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
@@ -168,10 +158,9 @@ export default class Component extends HTMLElement {
     }
 
     connectedCallback() {
-        setTimeout(()=>{
+        setTimeout( ()=>{
             this.setup();
-            this.props = this.watch(this.props || {});
-            this.state = this.watch(this.data);
+            this.view.compile(this.template, this.styles);
             this.batchUpdate(() => {
                 this.$emit('connected')
             });
@@ -180,10 +169,5 @@ export default class Component extends HTMLElement {
 
     disconnectedCallback() {
         this.beforeDestroy();
-        this.errorHandler = undefined;
-        this.dependencies = undefined;
-        this.props = undefined;
-        this.state = undefined;
-        this.view = undefined;
     }
 }

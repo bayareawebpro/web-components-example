@@ -4,15 +4,21 @@ import EventBinding from "../directives/EventBinding.js";
 import ModelBinding from "../directives/ModelBinding.js";
 import StateBinding from "../directives/StateBinding.js";
 import ConditionBinding from "../directives/ConditionBinding.js";
+import Component from "../components/Component.js";
+
 
 export default class Compiler {
 
     constructor(scope, root = undefined) {
         this.prevCond = undefined;
         this.elements = new Map;
-        this.rendered = false;
+        this.status = 'ready';
         this.scope = scope;
         this.root = root;
+
+        if(this.scope instanceof HTMLElement){
+            this.scope.dataset.cloak = 'true';
+        }
     }
 
     compile(html, styles) {
@@ -21,18 +27,13 @@ export default class Compiler {
             this.addStyleSheet(styles);
         }
 
-        this.template =  document.createElement('template');
+        this.template = document.createElement('template');
         this.template.innerHTML = html.trim();
 
         this.mapElements( this.template.content.querySelectorAll(`*`));
+        this.status = 'compiled';
 
-        if(this.scope instanceof HTMLElement){
-            this.scope.dataset.cloak = 'true';
-        }
-
-        this.root.replaceChildren(this.template.content);
-
-        return this.updateCompiled();
+        this.root.append(this.template.content);
     }
 
     mapElements(nodeList) {
@@ -42,6 +43,7 @@ export default class Compiler {
     }
 
     mapElement(node, config = {scope: this.scope}){
+        this.status = 'compiling';
 
         if(this.elements.has(node)){
             return;
@@ -75,13 +77,19 @@ export default class Compiler {
         }
 
         if (config.dirs.length) {
+
+            if(customElements.get(node.localName)){
+                customElements.upgrade(node)
+            }
+
             this.elements.set(node, config);
         }
 
-        return node;
+        return [node, config];
     }
 
-    updateCompiled(...elements) {
+    update(...elements) {
+        this.status = 'rendering';
 
         const jobs = []
 
@@ -99,19 +107,28 @@ export default class Compiler {
     }
 
     processJobs(jobs){
+
+        if(this.scope.performanceMark instanceof Function){
+            this.scope.performanceMark('compile');
+        }
+
+        if(this.scope.log instanceof Function){
+            this.scope.log('processJobs...');
+        }
+
         return Promise.allSettled(jobs).then((results)=>{
-            this.rendered = true;
+            this.status = 'rendered';
 
             if(this.scope instanceof HTMLElement){
                 delete this.scope.dataset.cloak;
             }
 
-            if(!this.scope.debug){
-                return;
+            if(this.scope.performanceMeasure instanceof Function){
+                this.scope.performanceMeasure('compile', 'render');
             }
 
-            if(typeof this.scope.performanceMeasure === 'function'){
-                this.scope.performanceMeasure('compile', 'rendered');
+            if(!this.scope.debug){
+                return;
             }
 
             const failed = results.find(({status})=> status === 'rejected');
@@ -195,7 +212,6 @@ export default class Compiler {
 
     walk(selector, callback) {
         const children = this.root.querySelectorAll(selector);
-
         for (const [index, child] of children.entries()) {
             callback(child, index);
         }
