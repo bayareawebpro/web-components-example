@@ -79,13 +79,15 @@ export default class List extends Component {
             <span data-bind:text="state.items.length"></span> items
         </div>
         <ul>
-            <template data-for="item of state.items">
+            <template 
+                data-if="state.items.length" 
+                data-for="item of state.items">
                 <custom-list-item 
                     data-bind:key="item.id"
                     data-state:item="item">
                 </custom-list-item>
             </template>
-            <li data-if="!state.items.length">
+            <li data-else>
                 Add items...
             </li>
         </ul>
