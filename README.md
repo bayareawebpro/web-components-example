@@ -15,6 +15,13 @@
 - Expression Bindings.
 
 
+## ToDo
+
+- Remove Data Attributes if is Directive.
+- Disable Pointer Events During ReRender.
+- Integrate WebWorker for Compiler Process MultiThreading.
+- Bypass Expression Bindings if Parent Element Condition is False.
+
 ### Text Binding
 
 ```html
