@@ -137,7 +137,8 @@ export default class Component extends HTMLElement {
     }
 
     batchUpdate(callback = null, reRender = true) {
-        this.lockedForStateUpdate = true;
+
+        this.lockedForStateUpdate = false;
 
         if(callback instanceof Function){
             callback();

@@ -8,9 +8,19 @@ export function factory(times) {
     function _random (max) { return Math.round(Math.random() * 1000) % max; }
 
     let data = new Array(times);
+
+    if(times === 1){
+        return {
+            id: uuid(),
+            index: 0,
+            value: `${adjectives[_random(adjectives.length)]} ${colours[_random(colours.length)]} ${nouns[_random(nouns.length)]}`,
+            editing: false,
+        }
+    }
     for (let i = 0; i < times; i++) {
         data[i] = {
             id: uuid(),
+            index: i,
             value: `${adjectives[_random(adjectives.length)]} ${colours[_random(colours.length)]} ${nouns[_random(nouns.length)]}`,
             editing: false,
         }

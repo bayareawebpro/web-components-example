@@ -1,6 +1,5 @@
-
-
 /**
+ * @param {Compiler} compiler
  * @param {undefined|Object} config
  * @param {HTMLElement} element
  * @param {Attr} attr
@@ -14,7 +13,8 @@
  */
 export default class Directive{
 
-    constructor(element, attr, config) {
+    constructor(compiler, element, attr, config) {
+        this.compiler = compiler;
         this.element = element;
         this.config = config;
         this.callback = undefined;
@@ -24,6 +24,7 @@ export default class Directive{
         const [directive, modifiers] = this.parseName(attr.localName);
         this.directive = directive;
         this.modifiers = modifiers || undefined;
+        this.element.removeAttribute(attr.localName);
         this.parse();
         this.bind();
     }
@@ -32,16 +33,21 @@ export default class Directive{
         // Child Class Override.
     }
 
+    execute(){
+        // Child Class Override.
+    }
+
     bind() {
+        // Child Class Override.
         this.bindExpression();
     }
 
     /**
-     * @param {string} name
+     * @param {string} localName
      * @return {string[]}
      */
-    parseName(name){
-        return name.replace('data-', '').split(':');
+    parseName(localName){
+        return localName.replace('data-', '').split(':');
     }
 
     /**
@@ -90,7 +96,27 @@ export default class Directive{
         return getComputedStyle(this.element);
     }
 
-    get elementVisible(){
-        return this.styles.display !== 'none'
+    get isSuspended(){
+        return this.element.dataset.compile === 'false';
+    }
+
+    suspend(){
+        this.element.dataset.compile = 'false';
+
+        if(!(this.element instanceof HTMLTemplateElement)){
+            this.compiler.walkElements(this.element.querySelectorAll('*'), (node)=>{
+                node.dataset.compile = 'false';
+            })
+        }
+    }
+
+    restore(){
+        this.element.dataset.compile = 'true';
+
+        if(!(this.element instanceof HTMLTemplateElement)){
+            this.compiler.walkElements(this.element.querySelectorAll('*'), (node)=>{
+                node.dataset.compile = 'true';
+            })
+        }
     }
 }

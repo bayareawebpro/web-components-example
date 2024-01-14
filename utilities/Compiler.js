@@ -4,7 +4,7 @@ import EventBinding from "../directives/EventBinding.js";
 import ModelBinding from "../directives/ModelBinding.js";
 import StateBinding from "../directives/StateBinding.js";
 import ConditionBinding from "../directives/ConditionBinding.js";
-import Component from "../components/Component.js";
+import Directive from "../directives/Directive.js";
 
 
 export default class Compiler {
@@ -15,10 +15,6 @@ export default class Compiler {
         this.status = 'ready';
         this.scope = scope;
         this.root = root;
-
-        if(this.scope instanceof HTMLElement){
-            this.scope.dataset.cloak = 'true';
-        }
     }
 
     compile(html, styles) {
@@ -50,30 +46,40 @@ export default class Compiler {
         }
 
         config.dirs = []
+        config.node = node
 
         // Some attributes are not iterable.
         const attributes = Array.from(node.attributes);
 
-        for (const attr of attributes) {
+        try{
+            for (const attr of attributes) {
 
-            const name = attr.localName;
+                const name = attr.localName;
+                if (name.startsWith('data-state')) {
+                    config.dirs.push(new StateBinding(this, node, attr, config));
 
-            if (name.startsWith('data-if')) {
-                config.dirs.push(this.prevCond = new ConditionBinding(node, attr, config));
-            } else if (name.startsWith('data-else')) {
-                config.dirs.push((new ConditionBinding(node, attr, config)).inverseExpression(this.prevCond));
-                this.prevCond = null
-            } else if (name.startsWith('data-for')) {
-                config.dirs.push(new LoopBinding(node, attr, config));
-            } else if (name.startsWith('on')) {
-                config.dirs.push(new EventBinding(node, attr, config));
-            } else if (name.startsWith('data-bind')) {
-                config.dirs.push(new DataBinding(node, attr, config));
-            } else if (name.startsWith('data-model')) {
-                config.dirs.push(new ModelBinding(node, attr, config));
-            }else if (name.startsWith('data-state')) {
-                config.dirs.push(new StateBinding(node, attr, config));
+                } else if (name.startsWith('data-if')) {
+                    config.dirs.push(this.prevCond = new ConditionBinding(this, node, attr, config));
+
+                } else if (name.startsWith('data-else')) {
+                    config.dirs.push((new ConditionBinding(this, node, attr, config)).inverseExpression(this.prevCond));
+                    this.prevCond = null
+
+                } else if (name.startsWith('data-for')) {
+                    config.dirs.push(new LoopBinding(this, node, attr, config));
+
+                } else if (name.startsWith('on')) {
+                    config.dirs.push(new EventBinding(this, node, attr, config));
+
+                } else if (name.startsWith('data-bind')) {
+                    config.dirs.push(new DataBinding(this, node, attr, config));
+
+                } else if (name.startsWith('data-model')) {
+                    config.dirs.push(new ModelBinding(this, node, attr, config));
+                }
             }
+        }catch (error){
+            this.handleError(error)
         }
 
         if (config.dirs.length) {
@@ -89,21 +95,60 @@ export default class Compiler {
     }
 
     update(...elements) {
+
         this.status = 'rendering';
 
         const jobs = []
 
         elements = elements.length ? elements : this.elements.values()
 
+
+        /**
+         * ToDo: Execute Condition Bindings First.
+         * The execute additional bindings.
+         * this.view.root.dataset.compile !== 'false'
+         */
         for (const config of elements) {
-            config.dirs.forEach((binding) => {
-                if (!(binding instanceof EventBinding)) {
+
+            const suspended = [];
+
+            const isSuspended = config.node.closest('[data-compile="false"]')?.contains(config.node);
+
+            for(const binding of config.dirs){
+                if(binding instanceof StateBinding){
+                    binding.execute();
+                }
+                if(binding instanceof ConditionBinding){
+                    binding.execute();
+                }
+                if (!(binding instanceof EventBinding) && !isSuspended) {
                     jobs.push(this.createJob(binding));
                 }
-            });
+            }
         }
 
        return this.processJobs(jobs);
+    }
+
+    /**
+     * @param {Directive|Object} task
+     * @return {Promise<void>}
+     */
+    createJob(task){
+        return new Promise((resolve, reject) => {
+            queueMicrotask(() => {
+                try {
+                    if(task instanceof Directive){
+                        task.execute();
+                    }else if(task instanceof Function){
+                        task();
+                    }
+                    resolve();
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        })
     }
 
     processJobs(jobs){
@@ -112,16 +157,8 @@ export default class Compiler {
             this.scope.performanceMark('compile');
         }
 
-        if(this.scope.log instanceof Function){
-            this.scope.log('processJobs...');
-        }
-
         return Promise.allSettled(jobs).then((results)=>{
             this.status = 'rendered';
-
-            if(this.scope instanceof HTMLElement){
-                delete this.scope.dataset.cloak;
-            }
 
             if(this.scope.performanceMeasure instanceof Function){
                 this.scope.performanceMeasure('compile', 'render');
@@ -132,33 +169,22 @@ export default class Compiler {
             }
 
             const failed = results.find(({status})=> status === 'rejected');
-
             if(failed){
-                if(typeof this.scope.errorHandler === 'function'){
-                    return this.scope.errorHandler(failed.reason);
-                }
-                throw failed.reason;
+                this.handleError(failed.reason)
             }
         });
     }
 
-    /**
-     * @param {Object} binding
-     * @return {Promise<void>}
-     */
-    createJob(binding){
-        return new Promise((resolve, reject) => {
-            queueMicrotask(() => {
-                try {
-                    binding.execute();
-                    resolve();
-                } catch (error) {
-                    reject(error);
-                }
-            });
-        })
+    handleError(error){
+        if(this.scope.errorHandler instanceof Function){
+            return this.scope.errorHandler(error);
+        }
+        throw error;
     }
 
+    /**
+     * @param {string} css
+     */
     addStyleSheet(css) {
 
         if(!css){
@@ -172,8 +198,9 @@ export default class Compiler {
             .querySelector('style:first-of-type');
 
         const style = `
-        [data-cloak="true"]{
+        [data-compile="false"]{
             display: none;
+            pointer-events: none;
         }
         ${styleTag.textContent}
         `;
@@ -193,26 +220,45 @@ export default class Compiler {
     }
 
     /**
-     * @param {HTMLElement|DocumentFragment} children
+     * @param {[HTMLElement|DocumentFragment]} children
      */
     append(...children){
         this.root.append(...children);
     }
 
     /**
-     * @param {HTMLElement|DocumentFragment} children
+     * @param {[HTMLElement|DocumentFragment]} children
      */
     prepend(...children){
         this.root.prepend(...children);
     }
 
+    /**
+     * @param {string} selector
+     */
     ref(selector) {
         return this.root.querySelector(selector)
     }
 
-    walk(selector, callback) {
-        const children = this.root.querySelectorAll(selector);
-        for (const [index, child] of children.entries()) {
+    /**
+     * @param {string} selector
+     * @param {Function} callback
+     * @return {this}
+     */
+    walk(selector = '*', callback) {
+        return this.walkElements(this.root.querySelectorAll(selector), callback)
+    }
+
+    /**
+     * @param {NodeList|HTMLCollection} elements
+     * @param {Function} callback
+     * @return {this}
+     */
+    walkElements(elements, callback) {
+
+        elements = elements instanceof NodeList ? elements.entries() : elements
+
+        for (const [index, child] of elements) {
             callback(child, index);
         }
         return this
@@ -225,6 +271,25 @@ export default class Compiler {
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
+    }
+
+    worker(name){
+        if (!'Worker' in window) {
+            return this.handleError(new Error('Worker API not available.'))
+        }
+        const worker = new Worker(`/utilities/${name}.js`);
+        worker.addEventListener('error',this.scope.errorHandler);
+        worker.addEventListener('messageerror',this.scope.errorHandler);
+
+        return {
+            dispatch(data, callback){
+                worker.addEventListener('message',(event)=>{
+                    callback(event);
+                    worker.terminate();
+                });
+                worker.postMessage(structuredClone(data));
+            }
+        }
     }
 }
 

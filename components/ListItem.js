@@ -4,13 +4,13 @@ export default class ListItem extends Component {
 
     constructor() {
         super();
-        this.debug = false;
+        this.debug = true;
     }
 
     get data() {
         return {
             editing: false,
-            item: {value: 'Whoops: Item not loaded.'}
+            item: null
         }
     }
 
@@ -36,7 +36,7 @@ export default class ListItem extends Component {
 
         setTimeout(()=>{
             this.$emit('custom-list:remove', item)
-        }, 200)
+        }, 100)
     }
 
     beforeDestroy() {
@@ -45,41 +45,44 @@ export default class ListItem extends Component {
     get template() {
 
         return `
-            <li data-if="!state.editing" class="fadeInRight">
-                <div part="preview" data-bind:text="state.item.value"></div>
-                <div part="actions">
+            <li data-if="state.item">
+                <div data-if="!state.editing" class="fadeInRight">
+                    <div data-bind:text="state.item.index"></div>
+                    <div class="preview" data-bind:text="state.item.value"></div>
+                    <div class="actions"">
+                        <button
+                            part="btn-blue"
+                            type="button"
+                            onclick="toggleEdit()">
+                            Edit
+                        </button>
+                        <button
+                            part="btn-red"
+                            type="button"
+                            onclick="onRemove()">
+                            Remove
+                        </button>
+                    </div>
+                </div>
+                <div data-else class="fadeInLeft">
+                   <input
+                        type="text"
+                        part="input"
+                        placeholder="Enter text..."
+                        data-model="state.item.value">
                     <button
-                        part="btn-blue"
                         type="button"
-                        onclick="toggleEdit()">
-                        Edit
+                        part="btn-green"
+                        onclick="onUpdate()">
+                        Save
                     </button>
                     <button
-                        part="btn-red"
                         type="button"
-                        onclick="onRemove()">
-                        Remove
+                        part="btn-red"
+                        onclick="toggleEdit()">
+                        Cancel
                     </button>
                 </div>
-            </li>
-            <li data-else class="fadeInLeft">
-               <input
-                    type="text"
-                    part="input"
-                    placeholder="Enter text..."
-                    data-model="state.item.value">
-                <button
-                    type="button"
-                    part="btn-green"
-                    onclick="onUpdate()">
-                    Save
-                </button>
-                <button
-                    type="button"
-                    part="btn-red"
-                    onclick="toggleEdit()">
-                    Cancel
-                </button>
             </li>
         `;
     }
@@ -135,7 +138,7 @@ export default class ListItem extends Component {
                 animation-name: fadeOut;
                 -webkit-animation-name: fadeOut;
             }
-            li{
+            li > div{
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -145,11 +148,11 @@ export default class ListItem extends Component {
                 background-color: #fefefe;
                 gap: 0.4rem;
             }
-            [part="preview"]{
+            .preview{
                 flex-grow: 1;
                 font-size: 1.6rem;
             }
-            [part="actions"]{
+            .actions{
                 flex-shrink: 0;
                 display: inline-flex;
                 gap: 0.4rem;

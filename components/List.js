@@ -16,8 +16,7 @@ export default class List extends Component {
 
     get data() {
         return {
-            items: this.props.items || factory(5),
-            updated: false
+            items: this.props.items || factory(1000)
         }
     }
 
@@ -36,10 +35,31 @@ export default class List extends Component {
 
     addItem(event) {
         this.batchUpdate(() => {
-            this.state.items.unshift( {
+
+            this.state.items.unshift({
                 id: uuid(),
+                index: 0,
                 value: event.detail.value
             });
+
+            this.state.items.splice(1, 1, {
+                id: uuid(),
+                index: 1,
+                value: 'update index 1'
+            });
+
+            this.state.items.splice(3, 1, {
+                id: uuid(),
+                index: 2,
+                value: 'update index 2'
+            });
+
+            this.state.items.splice(5, 1,{
+                id: uuid(),
+                index: 5,
+                value: 'update index 5'
+            });
+
             // const first = this.state.items[0];
             // const last = this.state.items[this.state.items.length-1];
             //
@@ -80,7 +100,7 @@ export default class List extends Component {
         </div>
         <ul>
             <template 
-                data-if="state.items.length" 
+                data-if="state.items.length > 0" 
                 data-for="item of state.items">
                 <custom-list-item 
                     data-bind:key="item.id"
@@ -114,6 +134,7 @@ export default class List extends Component {
                 list-style: none;
                 flex-direction: column;
                 overflow-y: scroll;
+                overflow-x: hidden;
                 scroll-behavior: smooth;
                 border-radius: 0.6rem;
                 box-shadow: rgba(0,0,0,0.3) inset 0 0 5px;

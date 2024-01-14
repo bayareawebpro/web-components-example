@@ -1,6 +1,5 @@
 import Directive from "./Directive.js";
 import Compiler from "../utilities/Compiler.js";
-import Component from "../components/Component.js";
 
 const statements = {
     ARR: ' of ',
@@ -8,56 +7,72 @@ const statements = {
 }
 
 /**
- * @typedef {Object} Modifiers
- * @property {string} itemName
- * @property {string} dataName
- * @property {boolean} expectsArray
- */
-
-/**
  * @class LoopBinding
  * @property {Modifiers} modifiers
  * @property {HTMLTemplateElement} loopedElement
  * @property {Array} childKeys
  * @property {string} childKeyName
- * @property {Function} childKeyGetter
+ * @property {Map} keys
  */
 export default class LoopBinding extends Directive {
 
+    /**
+     * @typedef {Object} Modifiers
+     * @property {boolean} expectsArray
+     * @property {string} itemName
+     * @property {string} dataName
+     * @property {string} keyName
+     * @property {Function} keyGetter
+     */
     parse() {
-
-        const {ARR, OBJ} = statements;
-
-        const expectsArray = this.expression.includes(ARR);
-
-        const [itemName, dataName] = this.expression.split(expectsArray ? ARR : OBJ);
-
-        this.modifiers = {
-            itemName,
-            dataName,
-            expectsArray,
-        };
+        this.keys = new Map;
 
         this.compiler = new Compiler({
             log: this.config.scope.log,
             errorHandler: this.config.scope.errorHandler,
         }, this.element.parentElement);
 
-        this.loopedElement = this.element.content.firstElementChild;
-
-        if (!this.loopedElement.dataset['bind:key']) {
-            throw new Error(`ForLoop (${this.expression}) requires data-key="${this.modifiers.itemName}.{your_id}" attribute.`)
+        if (this.element instanceof HTMLTemplateElement) {
+            this.loopedElement = this.element.content.firstElementChild;
+        } else {
+            this.loopedElement = this.element;
         }
 
-        this.childKeyName = this.loopedElement.dataset['bind:key'];
-        this.childKeyGetter = this.createExpression(this.loopedElement.dataset['bind:key']);
+        const {ARR, OBJ} = statements;
+        const expectsArray = this.expression.includes(ARR);
+        const [itemName, dataName] = this.expression.split(expectsArray ? ARR : OBJ);
+        const keyName = this.getKeyName(itemName);
+        const keyGetter = this.createExpression(keyName);
+
+        this.modifiers = {
+            expectsArray,
+            itemName,
+            dataName,
+            keyName,
+            keyGetter
+        };
     }
 
+    /**
+     * Create an expression to get the iterable object.
+     */
     bind() {
         this.bindExpression(this.modifiers.dataName);
-
     }
 
+    /**
+     * Get the Key Name specified by the looped element.
+     */
+    getKeyName(itemName) {
+        if (!this.loopedElement.dataset['bind:key']) {
+            throw new Error(`ForLoop (${this.expression}) requires data-key="${itemName}.{id}" attribute.`)
+        }
+        return this.loopedElement.dataset['bind:key'];
+    }
+
+    /**
+     * Create a new child element and map it with the compiler.
+     */
     createChild(stateVal) {
         return this.compiler.mapElement(this.loopedElement.cloneNode(true), {
             scope: this.createLoopIterationScope(stateVal)
@@ -65,7 +80,7 @@ export default class LoopBinding extends Directive {
     }
 
     /**
-     * Set the scope for every loop iteration.
+     * Crate a unique scope for every loop iteration.
      * with an object property that matches
      * the key used in the loop scope.
      * @param value
@@ -78,12 +93,16 @@ export default class LoopBinding extends Directive {
     }
 
     /**
+     * Get the key value from the loop iteration item.
      * @param {Object} item
      */
-    getItemKey(item) {
-        return this.childKeyGetter(this.createLoopIterationScope(item));
+    getKey(item) {
+        return this.modifiers.keyGetter(this.createLoopIterationScope(item));
     }
 
+    /**
+     * Execute the rendering strategy.
+     */
     execute() {
 
         if (this.compiler.status === 'ready') {
@@ -94,156 +113,119 @@ export default class LoopBinding extends Directive {
             return;
         }
 
-        const values = this.evaluate();
-        const children = this.getChildren();
+        this.updateChildren(this.evaluate());
 
-        if (values.length < children.length) {
-            this.removeChildren(values, children);
-        } else if (values.length > children.length) {
-            this.insertChildren(values, children);
-        } else if (values.length === children.length) {
-            this.updateChildren(values, children);
-        }
+
+        // this.compiler.worker('Worker').dispatch({method: 'sortKeys', value}, (event)=>{
+        //     console.log('Worker Result', event)
+        // });
     }
 
-    getChildren() {
-        return Array.from(this.compiler.elements.entries());
+
+    updateChildren(values) {
+
+        console.log('updateChildren')
+        /**
+         * Store a reference to the previous element child.
+         */
+        let previous = null;
+
+        /**
+         * Store changes as needed.
+         */
+        const changes = [];
+
+        /**
+         * Store newly created children as needed.
+         */
+        const create = [];
+
+        /**
+         * Create an array of the keys for access by index.
+         */
+        const rowLookupArray = values.map((item)=>this.getKey(item));
+
+        /**
+         * Keyed dictionary of rendered elements.
+         */
+        const elements = new Map;
+
+        /**
+         * Walk elements and build a map of elements.
+         * Remove children that no longer exist IF the array size changed.
+         * Otherwise, map existing children to a new key upon mismatch.
+         * The resulting map will contain a status for each child node.
+         */
+        this.compiler.walkElements(this.element.parentElement.querySelectorAll(this.loopedElement.localName), (child, index) => {
+
+            const key = child.getAttribute('key');
+            const shouldDelete = rowLookupArray.length < this.compiler.elements.size;
+
+            if (!rowLookupArray.includes(key) && shouldDelete) {
+                this.compiler.remove(child);
+            }
+            else if (rowLookupArray.at(index) !== key) {
+                elements.set(key, {
+                    config: this.compiler.elements.get(child), child,
+                })
+            }else{
+                elements.set(key, {
+                    config: this.compiler.elements.get(child), child,
+                })
+            }
+        });
+
+        /**
+         * Walk the array items and check the change status.
+         * Update children that had a key mismatch above.
+         * Otherwise, create new children and append after
+         * the parent element or the last child seen.
+         */
+        for (const item of values.values()) {
+
+            const key = this.getKey(item);
+
+            if (elements.has(key)) {
+                const {child, config, status} = elements.get(key);
+                previous = child;
+
+                if (status === 'update') {
+                    config.scope = this.createLoopIterationScope(item);
+                    changes.push(config);
+                }
+                continue;
+            }
+
+            const [child, config] = this.createChild(item);
+            create.push({sibling: previous || this.element, child})
+            changes.push(config);
+            previous = child;
+        }
+
+        for(const task of create){
+            task.sibling.insertAdjacentElement('afterend', task.child);
+        }
+
+        setTimeout(()=>{
+            this.compiler.update(...changes);
+        });
     }
 
     createChildren(values) {
-        this.compiler.status = 'compiling';
+
         console.log('createChildren');
-        for (const item of values) {
+
+        for (const [index, item] of values.entries()) {
+            /**
+             * Move Blocking Process to Background.
+             */
             setTimeout(() => {
                 const [child, config] = this.createChild(item);
                 queueMicrotask(() => {
                     this.compiler.append(child);
                     this.compiler.update(config);
                 })
-            })
+            }, Math.min(Math.pow(index, 1.5), 100))
         }
-    }
-
-    removeChildren(values, children) {
-        console.log('removeChildren');
-        const keys = values.map((item) => this.getItemKey(item));
-
-        for (const [child] of children) {
-            if (!keys.includes(child.getAttribute('key'))) {
-                this.compiler.remove(child);
-            }
-        }
-        // this.compiler.walk(this.loopedElement.localName, (child) => {
-        //     if (!keys.includes(child.getAttribute('key'))) {
-        //     }
-        // })
-    }
-
-    insertChildren(values, children) {
-        console.log('insertChildren')
-
-        const lookup = new Map;
-        for (const [child, config] of children) {
-            lookup.set(child.getAttribute('key'), [child, config])
-        }
-
-        const mapped = values.map((item, index) => {
-            const key = this.getItemKey(item);
-            const [child, config] = (lookup.has(key) ? lookup.get(key) : this.createChild(item));
-            return {
-                index: index,
-                exists: child.hasAttribute('key'),
-                removed: child.hasAttribute('key'),
-                key,
-                config,
-                child,
-            };
-        });
-
-        const changes = []
-        for (const item of mapped) {
-            if (item.exists) {
-                continue;
-            }
-
-            const index = mapped.indexOf(item);
-
-            const entry = {
-                ...item, previous: mapped.at(index - 1),
-            };
-
-            if (index === 0 && !entry.exists) {
-                this.compiler.prepend(entry.child);
-                changes.push(entry.config);
-                continue;
-            }
-            if (!entry.exists && entry.previous) {
-                entry.previous.child.insertAdjacentElement('afterend', entry.child);
-                changes.push(entry.config);
-            }
-        }
-        if(changes.length){
-            this.compiler.update(...changes);
-        }
-    }
-
-    updateChildren(values, children) {
-
-        console.log('updateChildren')
-
-        const lookup = new Map;
-        for (const [index, value] of values.entries()) {
-            lookup.set(index, value)
-        }
-
-        const changes = []
-
-        this.compiler.walk(this.loopedElement.localName, (el, index) => {
-
-            const item = lookup.get(index);
-            const key = this.getItemKey(item);
-
-            if (key !== el.getAttribute('key')) {
-                const config = this.compiler.elements.get(el);
-                config.scope = this.createLoopIterationScope(item);
-                changes.push(config);
-            }
-        })
-
-        if(changes.length){
-            this.compiler.update(...changes);
-        }
-        // const elements = new Map;
-        // for(const [child, config] of children){
-        //     elements.set(child.getAttribute('key'), [child, config])
-        // }
-        //
-        // const mapped = values.map((item, index) => {
-        //     const key = this.getItemKey(item);
-        //     const [child, config] = elements.get(key);
-        //     return  {
-        //         index: index,
-        //         key,
-        //         config,
-        //         child,
-        //     };
-        // });
-
-        // const changed = [];
-        //
-        // const elementKeys = children.map(([child]) => child.getAttribute('key'));
-        //
-        // for (const [index, item] of values.entries()) {
-        //     if (elementKeys.at(index) === this.getItemKey(item)) {
-        //         continue;
-        //     }
-        //     const [child, config] = children.at(index);
-        //     config.scope = this.createItemScope(item);
-        //     changed.push(config);
-        // }
-        //
-        // if (changed.length) {
-        //     this.compiler.update(...changed);
-        // }
     }
 }

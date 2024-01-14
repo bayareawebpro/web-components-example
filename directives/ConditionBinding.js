@@ -1,17 +1,30 @@
 import Directive from "./Directive.js";
 
+
+/**
+ * @class ConditionBinding
+ * @property {Modifiers} modifiers
+ */
 export default class ConditionBinding extends Directive {
 
+    /**
+     * @typedef {Object} Modifiers
+     * @property {string} display
+     * @property {string} pointerEvents
+     */
     parse() {
-        this.modifiers = {display: this.styles.display};
-    }
-
-    update(visible){
-        this.element.style.display = visible ? this.modifiers.display : 'none'
+        this.modifiers = {
+            display: this.styles.display,
+            pointerEvents: this.styles.pointerEvents
+        };
     }
 
     execute(){
-        this.update(this.evaluate());
+        if(this.evaluate()){
+            this.restore();
+        }else{
+            this.suspend();
+        }
     }
 
     /**
