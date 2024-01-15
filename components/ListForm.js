@@ -26,7 +26,7 @@ export default class ListForm extends Component {
     get help(){
         return this.state.value
             ? `Add: ${this.state.value}`
-            : 'Enter ToDo Item...'
+            : 'Describe the new item'
     }
 
     get template() {
@@ -82,8 +82,6 @@ export default class ListForm extends Component {
                 padding: 0;
                 color: #818283;
             }
-            
-                        
             button{
                 padding: 1.4rem;
                 display: inline-flex;
@@ -91,7 +89,6 @@ export default class ListForm extends Component {
                 line-height: 1.6rem;
                 font-size: 1.6rem;
             }
-            
             </style>
         `;
     }

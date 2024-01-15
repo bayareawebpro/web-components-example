@@ -88,7 +88,9 @@ export default class ListItem extends Component {
     get styles() {
         return `
             <style>
-            
+            li{
+            border-bottom: 1px solid #eee;
+            }
             li > div{
                 display: flex;
                 align-items: center;
@@ -103,6 +105,7 @@ export default class ListItem extends Component {
                 flex-grow: 1;
                 font-size: 1.6rem;
                 line-height: 1.6rem;
+                font-weight: bold;
             }
             .actions{
                 flex-shrink: 0;
