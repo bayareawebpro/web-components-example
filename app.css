@@ -8,17 +8,16 @@
 }
 html,body{
     font-size: 62.5%;
-    padding: 0;
-    margin: 0;
     text-align: center;
     font-family: sans-serif;
     background-color: white;
-    box-sizing: border-box;
     height: 100%;
+    padding: 0;
+    margin: 0;
 }
 body{
-    font-size: 1.2rem;
     display: flex;
-    flex-direction: column;
     flex-grow: 1;
+    flex-direction: column;
+    font-size: 1.2rem;
 }

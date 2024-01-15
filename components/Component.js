@@ -159,13 +159,11 @@ export default class Component extends HTMLElement {
     }
 
     connectedCallback() {
+        this.dataset.cloak = 'true'
         this.setup();
-        setTimeout( ()=>{
-            this.log('connected.');
-            this.view.compile(this.template, this.styles);
-            this.batchUpdate(() => {
-                this.$emit('connected')
-            });
+        this.view.compile(this.template, this.styles);
+        this.batchUpdate(() => {
+            this.$emit('connected')
         });
     }
 

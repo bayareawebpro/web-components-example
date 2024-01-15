@@ -83,39 +83,15 @@ export default class ListForm extends Component {
                 color: #818283;
             }
             
-            input{
-                margin: 0;
-                padding: 1rem;
-                line-height: 1.6rem;
-                border: 1px solid #888;
-                cursor: text;
-                font-size: 1.6rem;
-                flex-grow: 1;
-                border-radius: 4px;
-            }
                         
             button{
-                margin: 0;
                 padding: 1.4rem;
-                border: none;
-                box-shadow: 0 1px 2px rgba(0,0,0, 0.3);
-                cursor: pointer;
-                color: white;
                 display: inline-flex;
                 border-radius: .3rem;
                 line-height: 1.6rem;
                 font-size: 1.6rem;
-                transition: all 100ms ease-in-out;
             }
-            button[disabled]{
-                opacity: 0.5;
-            }
-            .btn-blue{
-                background-color: #006699;
-            }
-            .btn-blue:hover{
-                background-color: #0080c4;
-            }
+            
             </style>
         `;
     }

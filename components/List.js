@@ -16,7 +16,7 @@ export default class List extends Component {
 
     get data() {
         return {
-            items: this.props.items || factory(1000)
+            items: this.props.items || factory(1000).reverse()
         }
     }
 
@@ -38,27 +38,27 @@ export default class List extends Component {
 
             this.state.items.unshift({
                 id: uuid(),
-                index: 0,
-                value: 'push 0'//event.detail.value
+                index: this.state.items.length,
+                value: event.detail.value
             });
 
-            this.state.items.splice(1, 1, {
-                id: uuid(),
-                index: 1,
-                value: 'update index 1'
-            });
-
-            this.state.items.splice(3, 1, {
-                id: uuid(),
-                index: 3,
-                value: 'update index 3'
-            });
-
-            this.state.items.splice(5, 1,{
-                id: uuid(),
-                index: 5,
-                value: 'update index 5'
-            });
+            // this.state.items.splice(1, 1, {
+            //     id: uuid(),
+            //     index: 1,
+            //     value: 'update index 1'
+            // });
+            //
+            // this.state.items.splice(3, 1, {
+            //     id: uuid(),
+            //     index: 3,
+            //     value: 'update index 3'
+            // });
+            //
+            // this.state.items.splice(5, 1,{
+            //     id: uuid(),
+            //     index: 5,
+            //     value: 'update index 5'
+            // });
 
         }).then(()=>this.view.ref('ul').scrollTo(0, 0))
     }

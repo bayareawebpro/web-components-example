@@ -1,3 +1,4 @@
+
 /*
 * =========================
 * Compiler Utilities
@@ -11,7 +12,69 @@
 
 /*
 * =========================
-* Animations
+* Forms
+* =========================
+*/
+input{
+    margin: 0;
+    padding: 1rem;
+    line-height: 1.6rem;
+    border: 1px solid #888;
+    cursor: text;
+    font-size: 1.6rem;
+    flex-grow: 1;
+    border-radius: 4px;
+}
+/*
+* =========================
+* Buttons
+* =========================
+*/
+button{
+    margin: 0;
+    padding: 1.2rem;
+    display: inline-flex;
+
+    border: none;
+    border-radius: .3rem;
+
+    color: white;
+    font-size: 1.2rem;
+    line-height: 1.2rem;
+    cursor: pointer;
+    text-align: center;
+    justify-content: center;
+
+    box-shadow: 0 1px 2px rgba(0,0,0, 0.3);
+    transition: all 100ms ease-in-out;
+}
+button[disabled]{
+    opacity: 0.5;
+}
+.btn-blue{
+    background-color: #006699;
+}
+.btn-blue:hover{
+    background-color: #0080c4;
+}
+.btn-green{
+    background-color: #459900;
+    color: white;
+}
+.btn-green:hover{
+    background-color: #408c00;
+}
+.btn-red{
+    background-color: #CCC;
+    color: #333;
+}
+.btn-red:hover{
+    background-color: #BBB;
+    color: #111;
+}
+/*
+* =========================
+* Transitions
 * =========================
 */
 @keyframes fadeInRight {
@@ -42,12 +105,13 @@
         opacity: 0;
     }
 }
+
 .fadeInRight,
 .fadeInLeft,
 .fadeOut {
     animation-duration: 240ms;
-    animation-fill-mode: both;
     -webkit-animation-duration: 240ms;
+    animation-fill-mode: both;
     -webkit-animation-fill-mode: both;
 }
 .fadeInLeft {
@@ -61,4 +125,6 @@
 .fadeOut {
     animation-name: fadeOut;
     -webkit-animation-name: fadeOut;
+    animation-duration: 120ms;
+    -webkit-animation-duration: 120ms;
 }

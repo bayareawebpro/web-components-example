@@ -37,30 +37,25 @@ export default class ListItem extends Component {
 
         setTimeout(()=>{
             this.$emit('custom-list:remove', item);
-        }, 80)
-    }
-
-    beforeDestroy() {
+        }, 120)
     }
 
     get template() {
-
         return `
             <li data-if="state.item">
                 <div data-if="!state.editing" class="fadeInRight">
                     <div data-bind:text="state.item.index"></div>
-                    
                     <div class="preview" data-bind:text="state.item.value"></div>
-                    <div class="actions"">
+                    <div class="actions">
                         <button
-                            part="btn-blue"
                             type="button"
+                            class="btn-blue"
                             onclick="toggleEdit()">
                             Edit
                         </button>
                         <button
-                            part="btn-red"
                             type="button"
+                            class="btn-red"
                             onclick="onRemove()">
                             Remove
                         </button>
@@ -69,21 +64,22 @@ export default class ListItem extends Component {
                 <div data-else class="fadeInLeft">
                    <input
                         type="text"
-                        part="input"
                         placeholder="Enter text..."
                         data-model="state.item.value">
-                    <button
-                        type="button"
-                        part="btn-green"
-                        onclick="onUpdate()">
-                        Save
-                    </button>
-                    <button
-                        type="button"
-                        part="btn-red"
-                        onclick="toggleEdit()">
-                        Cancel
-                    </button>
+                    <div class="actions">
+                        <button
+                            type="button"
+                            class="btn-green"
+                            onclick="onUpdate()">
+                            Save
+                        </button>
+                        <button
+                            type="button"
+                            class="btn-red"
+                            onclick="toggleEdit()">
+                            Cancel
+                        </button>
+                    </div>
                 </div>
             </li>
         `;
@@ -106,60 +102,29 @@ export default class ListItem extends Component {
             .preview{
                 flex-grow: 1;
                 font-size: 1.6rem;
+                line-height: 1.6rem;
             }
             .actions{
                 flex-shrink: 0;
                 display: inline-flex;
-                gap: 0.4rem;
+            }
+            .actions button{
+                min-width: 70px;
+                text-align: center;
+            }
+            .actions button:first-of-type{
+                border-radius: .3rem 0 0 .3rem;
+            }
+            .actions button:last-of-type{
+                border-radius: 0 .3rem .3rem 0;
             }
             input{
-                margin: 0;
                 padding: 0.8rem;
                 line-height: 1.6rem;
-                border: 1px solid #888;
-                cursor: text;
                 font-size: 1.6rem;
-                border-radius: 4px;
                 flex-grow: 1;
             }
-                        
-            button{
-                margin: 0;
-                padding: 1.2rem;
-                border: none;
-                box-shadow: 0 1px 2px rgba(0,0,0, 0.3);
-                cursor: pointer;
-                color: white;
-                display: inline-flex;
-                border-radius: .3rem;
-                line-height: 1.2rem;
-                font-size: 1.2rem;
-                transition: all 30ms ease-in-out;
-            }
 
-            [part="btn-blue"]{
-                background-color: #006699;
-            }
-            [part="btn-blue"]:hover{
-                background-color: #0080c4;
-            }
-            
-            [part="btn-green"]{
-                background-color: #459900;
-                color: white;
-            }
-            [part="btn-green"]:hover{
-                background-color: #408c00;
-            }
-            
-            [part="btn-red"]{
-                background-color: #CCC;
-                color: #333;
-            }
-            [part="btn-red"]:hover{
-                background-color: #bb0000;
-                color: white;
-            }
             
             </style>
         `;
