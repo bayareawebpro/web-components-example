@@ -12,6 +12,7 @@ const statements = {
  * @property {HTMLTemplateElement} loopedElement
  * @property {Array} childKeys
  * @property {string} childKeyName
+ * @property {string} selector
  * @property {Map} keys
  */
 export default class LoopBinding extends Directive {
@@ -39,18 +40,21 @@ export default class LoopBinding extends Directive {
             this.loopedElement = this.element;
         }
 
+        this.selector = `${this.element.parentElement.localName} > ${this.loopedElement.localName}`;
+
         const {ARR, OBJ} = statements;
         const expectsArray = this.expression.includes(ARR);
         const [itemName, dataName] = this.expression.split(expectsArray ? ARR : OBJ);
         const keyName = this.getKeyName(itemName);
         const keyGetter = this.createExpression(keyName);
 
+        this.queue = [];
         this.modifiers = {
             expectsArray,
             itemName,
             dataName,
             keyName,
-            keyGetter
+            keyGetter,
         };
     }
 
@@ -105,62 +109,56 @@ export default class LoopBinding extends Directive {
      * Execute the rendering strategy.
      */
     execute() {
-
         if (this.compiler.status === 'ready') {
             return this.createChildren(this.evaluate());
         }
 
-        if (this.compiler.status === 'rendering') {
-            return
+        for (const task of this.queue) {
+            cancelIdleCallback(task);
         }
+
         this.updateChildren(this.evaluate());
     }
 
     createChildren(values) {
-
-        for (const [index, item] of values.entries()) {
-            /**
-             * Move Blocking Process to Background
-             * Delay rendering of nodes slightly to improve performance.
-             */
-            requestIdleCallback(() => {
-
-                if(index % 100){
-                    console.log(this.compiler.status)
-                }
+        this.queue = values.map((item, index)=>{
+            return requestIdleCallback(() => {
+                this.queue.splice(index, 1);
                 const [child, config] = this.createChild(item);
                 this.compiler.append(child);
                 this.compiler.update(config);
             });
-        }
+        })
     }
 
 
     updateChildren(values) {
 
-        let previous = null;
-        const itemKeysIndex = [];
-        const elementsIndex = [];
+        let previousElement = null;
         const createConfigs = [];
         const renderConfigs = [];
+        const itemKeysIndex = [];
+        const elementsIndex = [];
         const itemKeysArray = values.map((item)=>this.getKey(item));
 
         /**
-         * Walk elements and build indexes.
-         * Remove children that no longer exist.
+         * Walk looped element and build indexes.
+         * Cleanup children that no longer exist.
          */
-        this.compiler.walk(this.loopedElement.localName, (child) => {
-            if (!itemKeysArray.includes(child.getAttribute('key'))) {
+        this.compiler.walk(this.selector, (child) => {
+            const key = child.getAttribute('key');
+            if (!itemKeysArray.includes(key)) {
                 this.compiler.remove(child);
                 return;
             }
-            itemKeysIndex.push(child.getAttribute('key'));
+            itemKeysIndex.push(key);
             elementsIndex.push(child);
         });
 
         /**
-         * Iterate the array items and check if the child exists. Update children that have an index mismatch.
-         * Create new children and append after the last child seen, or fallback to the parent element.
+         * Iterate the array items and check if the key exists and the index of the item, matches the key.
+         * Update children that have a key index mismatch. Create new children and append after the last
+         * child seen, or fallback to the parent element.
          */
         for (const [index,item] of values.entries()) {
 
@@ -170,28 +168,28 @@ export default class LoopBinding extends Directive {
                 const child = elementsIndex.at(index);
 
                 if(itemKeysIndex.at(index) === key){
-                    previous = child;
+                    previousElement = child;
                     continue;
                 }
 
                 const config = this.compiler.elements.get(child);
                 config.scope = this.createLoopIterationScope(item);
                 renderConfigs.push(config);
-                previous = child;
+                previousElement = child;
                 continue;
             }
 
             const [newChild, newConfig] = this.createChild(item);
-            renderConfigs.push(newConfig);
+            //renderConfigs.push(newConfig);
             itemKeysIndex.splice(index, 0, key);
             elementsIndex.splice(index, 0, newChild);
-            createConfigs.push({child: newChild, sibling: previous || this.element});
-            previous = newChild;
+            createConfigs.push({newConfig, newChild, sibling: previousElement || this.element});
+            previousElement = newChild;
         }
 
         for(const createConfig of createConfigs){
-            const {child, sibling} = createConfig;
-            sibling.insertAdjacentElement('afterend', child);
+            const {newChild, sibling} = createConfig;
+            sibling.insertAdjacentElement('afterend', newChild);
         }
 
         this.compiler.update(...renderConfigs);

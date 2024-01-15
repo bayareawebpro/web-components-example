@@ -157,6 +157,7 @@ export default class Compiler {
         }
 
         return Promise.allSettled(jobs).then((results)=>{
+
             this.status = 'rendered';
 
             if(this.scope instanceof HTMLElement){
