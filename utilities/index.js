@@ -1,31 +1,6 @@
 
-
-export function factory(times) {
-    const adjectives = ["pretty", "large", "big", "small", "tall", "short", "long", "handsome", "plain", "quaint", "clean", "elegant", "easy", "angry", "crazy", "helpful", "mushy", "odd", "unsightly", "adorable", "important", "inexpensive", "cheap", "expensive", "fancy"],
-        colours = ["red", "yellow", "blue", "green", "pink", "brown", "purple", "brown", "white", "black", "orange"],
-        nouns = ["table", "chair", "house", "bbq", "desk", "car", "pony", "cookie", "sandwich", "burger", "pizza", "mouse", "keyboard"];
-
-    function _random (max) { return Math.round(Math.random() * 1000) % max; }
-
-    let data = new Array(times);
-
-    if(times === 1){
-        return {
-            id: uuid(),
-            index: 0,
-            value: `${adjectives[_random(adjectives.length)]} ${colours[_random(colours.length)]} ${nouns[_random(nouns.length)]}`,
-            editing: false,
-        }
-    }
-    for (let i = 0; i < times; i++) {
-        data[i] = {
-            id: uuid(),
-            index: i,
-            value: `${adjectives[_random(adjectives.length)]} ${colours[_random(colours.length)]} ${nouns[_random(nouns.length)]}`,
-            editing: false,
-        }
-    }
-    return data;
+export function trimWhiteSpace(value){
+    return value.replace(/^\s+/gm, '')
 }
 
 export function camelCase(str) {
@@ -56,4 +31,32 @@ export function toType(name, value){
         realName: camelCase(realName),
         realValue: cast[realType](value),
     }
+}
+
+export function factory(times) {
+    const adjectives = ["pretty", "large", "big", "small", "tall", "short", "long", "handsome", "plain", "quaint", "clean", "elegant", "easy", "angry", "crazy", "helpful", "mushy", "odd", "unsightly", "adorable", "important", "inexpensive", "cheap", "expensive", "fancy"],
+        colours = ["red", "yellow", "blue", "green", "pink", "brown", "purple", "brown", "white", "black", "orange"],
+        nouns = ["table", "chair", "house", "bbq", "desk", "car", "pony", "cookie", "sandwich", "burger", "pizza", "mouse", "keyboard"];
+
+    function _random (max) { return Math.round(Math.random() * 1000) % max; }
+
+    let data = new Array(times);
+
+    if(times === 1){
+        return {
+            id: uuid(),
+            index: 0,
+            value: `${adjectives[_random(adjectives.length)]} ${colours[_random(colours.length)]} ${nouns[_random(nouns.length)]}`,
+            editing: false,
+        }
+    }
+    for (let i = 0; i < times; i++) {
+        data[i] = {
+            id: uuid(),
+            index: i,
+            value: `${adjectives[_random(adjectives.length)]} ${colours[_random(colours.length)]} ${nouns[_random(nouns.length)]}`,
+            editing: false,
+        }
+    }
+    return data;
 }

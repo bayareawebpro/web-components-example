@@ -14,18 +14,31 @@ export default class ListForm extends Component {
         if (value.length > 3) {
             this.$emit('custom-list:add', {value})
 
-            this.batchUpdate(()=>{
+            return this.batchUpdate(()=>{
                 this.state.error = null
                 this.state.value = ''
+            }).then(()=>{
+                this.focusInput();
             })
-            return;
         }
-        this.state.error = 'Min length is 4 letters.'
+
+        this.state.error = 'Min length is 4 letters.';
+        this.focusInput();
+    }
+
+    onKeyDown($event) {
+        $event.code === 'Enter'
+            ? this.addItem()
+            : this.state.error = null;
+    }
+
+    focusInput(){
+        this.view.ref('input').focus();
     }
 
     get help(){
         return this.state.value
-            ? `Add: ${this.state.value}`
+            ? `${this.state.value}  ...hmm sounds interesting.`
             : 'Describe the new item'
     }
 
@@ -37,7 +50,7 @@ export default class ListForm extends Component {
                         autofocus
                         type="text" 
                         placeholder="Add Item..."
-                        onkeyup="state.error = null"
+                        onkeydown="onKeyDown()"
                         data-model="state.value"
                     />
                     <button 

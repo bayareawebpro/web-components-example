@@ -21,10 +21,11 @@ export default class Compiler {
     compile(html, styles) {
 
         this.template = document.createElement('template');
+
         this.template.innerHTML = `
         <link rel="stylesheet" href="/shared.css">
-        ${styles.trim()}
-        ${html.trim()}
+        ${styles.replace(/^\s+/gm, '')}
+        ${html}
         `;
 
         this.mapElements(this.template.content.querySelectorAll(`*`));
@@ -46,7 +47,6 @@ export default class Compiler {
         if(this.elements.has(node)){
             return;
         }
-
 
         config.dirs = [];
         config.node = node;
