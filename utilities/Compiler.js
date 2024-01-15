@@ -23,7 +23,7 @@ export default class Compiler {
         this.template = document.createElement('template');
 
         this.template.innerHTML = `
-        <link rel="stylesheet" href="/shared.css">
+        <link rel="stylesheet" href="./shared.css">
         ${styles.replace(/^\s+/gm, '')}
         ${html}
         `;

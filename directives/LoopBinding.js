@@ -180,7 +180,7 @@ export default class LoopBinding extends Directive {
             }
 
             const [newChild, newConfig] = this.createChild(item);
-            //renderConfigs.push(newConfig);
+            renderConfigs.push(newConfig);
             itemKeysIndex.splice(index, 0, key);
             elementsIndex.splice(index, 0, newChild);
             createConfigs.push({newConfig, newChild, sibling: previousElement || this.element});

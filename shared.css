@@ -110,21 +110,15 @@ button[disabled]{
 .fadeInLeft,
 .fadeOut {
     animation-duration: 240ms;
-    -webkit-animation-duration: 240ms;
     animation-fill-mode: both;
-    -webkit-animation-fill-mode: both;
 }
 .fadeInLeft {
     animation-name: fadeInLeft;
-    -webkit-animation-name: fadeInLeft;
 }
 .fadeInRight {
     animation-name: fadeInRight;
-    -webkit-animation-name: fadeInRight;
 }
 .fadeOut {
     animation-name: fadeOut;
-    -webkit-animation-name: fadeOut;
     animation-duration: 120ms;
-    -webkit-animation-duration: 120ms;
 }
