@@ -28,7 +28,8 @@ export default class LoopBinding extends Directive {
         this.keys = new Map;
 
         this.compiler = new Compiler({
-            log: this.config.scope.log,
+            logHandler: this.config.scope.logHandler,
+            dumpHandler: this.config.scope.dumpHandler,
             errorHandler: this.config.scope.errorHandler,
         }, this.element.parentElement);
 
@@ -109,123 +110,90 @@ export default class LoopBinding extends Directive {
             return this.createChildren(this.evaluate());
         }
 
-        if (this.compiler.status !== 'rendered') {
-            return;
+        if (this.compiler.status === 'rendering') {
+            return
         }
-
         this.updateChildren(this.evaluate());
+    }
 
+    createChildren(values) {
 
-        // this.compiler.worker('Worker').dispatch({method: 'sortKeys', value}, (event)=>{
-        //     console.log('Worker Result', event)
-        // });
+        for (const [index, item] of values.entries()) {
+            /**
+             * Move Blocking Process to Background
+             * Delay rendering of nodes slightly to improve performance.
+             */
+            requestIdleCallback(() => {
+
+                if(index % 100){
+                    console.log(this.compiler.status)
+                }
+                const [child, config] = this.createChild(item);
+                this.compiler.append(child);
+                this.compiler.update(config);
+            });
+        }
     }
 
 
     updateChildren(values) {
 
-        console.log('updateChildren')
-        /**
-         * Store a reference to the previous element child.
-         */
         let previous = null;
+        const itemKeysIndex = [];
+        const elementsIndex = [];
+        const createConfigs = [];
+        const renderConfigs = [];
+        const itemKeysArray = values.map((item)=>this.getKey(item));
 
         /**
-         * Store changes as needed.
+         * Walk elements and build indexes.
+         * Remove children that no longer exist.
          */
-        const changes = [];
-
-        /**
-         * Store newly created children as needed.
-         */
-        const create = [];
-
-        /**
-         * Create an array of the keys for access by index.
-         */
-        const rowLookupArray = values.map((item)=>this.getKey(item));
-
-        /**
-         * Keyed dictionary of rendered elements.
-         */
-        const elements = new Map;
-
-        /**
-         * Walk elements and build a map of elements.
-         * Remove children that no longer exist IF the array size changed.
-         * Otherwise, map existing children to a new key upon mismatch.
-         * The resulting map will contain a status for each child node.
-         */
-        this.compiler.walkElements(this.element.parentElement.querySelectorAll(this.loopedElement.localName), (child, index) => {
-
-            const key = child.getAttribute('key');
-            const shouldDelete = rowLookupArray.length < this.compiler.elements.size;
-
-            if (!rowLookupArray.includes(key) && shouldDelete) {
+        this.compiler.walk(this.loopedElement.localName, (child) => {
+            if (!itemKeysArray.includes(child.getAttribute('key'))) {
                 this.compiler.remove(child);
+                return;
             }
-            else if (rowLookupArray.at(index) !== key) {
-                elements.set(key, {
-                    config: this.compiler.elements.get(child), child,
-                })
-            }else{
-                elements.set(key, {
-                    config: this.compiler.elements.get(child), child,
-                })
-            }
+            itemKeysIndex.push(child.getAttribute('key'));
+            elementsIndex.push(child);
         });
 
         /**
-         * Walk the array items and check the change status.
-         * Update children that had a key mismatch above.
-         * Otherwise, create new children and append after
-         * the parent element or the last child seen.
+         * Iterate the array items and check if the child exists. Update children that have an index mismatch.
+         * Create new children and append after the last child seen, or fallback to the parent element.
          */
-        for (const item of values.values()) {
+        for (const [index,item] of values.entries()) {
 
             const key = this.getKey(item);
 
-            if (elements.has(key)) {
-                const {child, config, status} = elements.get(key);
-                previous = child;
+            if (itemKeysIndex.includes(key)) {
+                const child = elementsIndex.at(index);
 
-                if (status === 'update') {
-                    config.scope = this.createLoopIterationScope(item);
-                    changes.push(config);
+                if(itemKeysIndex.at(index) === key){
+                    previous = child;
+                    continue;
                 }
+
+                const config = this.compiler.elements.get(child);
+                config.scope = this.createLoopIterationScope(item);
+                renderConfigs.push(config);
+                previous = child;
                 continue;
             }
 
-            const [child, config] = this.createChild(item);
-            create.push({sibling: previous || this.element, child})
-            changes.push(config);
-            previous = child;
+            const [newChild, newConfig] = this.createChild(item);
+            renderConfigs.push(newConfig);
+            itemKeysIndex.splice(index, 0, key);
+            elementsIndex.splice(index, 0, newChild);
+            createConfigs.push({child: newChild, sibling: previous || this.element});
+            previous = newChild;
         }
 
-        for(const task of create){
-            task.sibling.insertAdjacentElement('afterend', task.child);
+        for(const createConfig of createConfigs){
+            const {child, sibling} = createConfig;
+            sibling.insertAdjacentElement('afterend', child);
         }
 
-        setTimeout(()=>{
-            this.compiler.update(...changes);
-        });
-    }
-
-    createChildren(values) {
-
-        console.log('createChildren');
-
-        for (const [index, item] of values.entries()) {
-            /**
-             * Move Blocking Process to Background.
-             */
-            setTimeout(() => {
-                const [child, config] = this.createChild(item);
-                queueMicrotask(() => {
-                    this.compiler.append(child);
-                    this.compiler.update(config);
-                })
-            }, Math.min(Math.pow(index, 1.5), 100))
-        }
+        this.compiler.update(...renderConfigs);
     }
 }

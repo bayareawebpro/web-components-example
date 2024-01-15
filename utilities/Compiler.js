@@ -9,6 +9,7 @@ import Directive from "../directives/Directive.js";
 
 export default class Compiler {
 
+
     constructor(scope, root = undefined) {
         this.prevCond = undefined;
         this.elements = new Map;
@@ -19,17 +20,18 @@ export default class Compiler {
 
     compile(html, styles) {
 
-        if(styles){
-            this.addStyleSheet(styles);
-        }
-
         this.template = document.createElement('template');
-        this.template.innerHTML = html.trim();
+        this.template.innerHTML = `
+        <link rel="stylesheet" href="/shared.css">
+        ${styles.trim()}
+        ${html.trim()}
+        `;
 
-        this.mapElements( this.template.content.querySelectorAll(`*`));
-        this.status = 'compiled';
+        this.mapElements(this.template.content.querySelectorAll(`*`));
 
         this.root.append(this.template.content);
+
+        this.status = 'compiled';
     }
 
     mapElements(nodeList) {
@@ -45,8 +47,9 @@ export default class Compiler {
             return;
         }
 
-        config.dirs = []
-        config.node = node
+
+        config.dirs = [];
+        config.node = node;
 
         // Some attributes are not iterable.
         const attributes = Array.from(node.attributes);
@@ -63,19 +66,18 @@ export default class Compiler {
 
                 } else if (name.startsWith('data-else')) {
                     config.dirs.push((new ConditionBinding(this, node, attr, config)).inverseExpression(this.prevCond));
-                    this.prevCond = null
 
                 } else if (name.startsWith('data-for')) {
                     config.dirs.push(new LoopBinding(this, node, attr, config));
-
-                } else if (name.startsWith('on')) {
-                    config.dirs.push(new EventBinding(this, node, attr, config));
 
                 } else if (name.startsWith('data-bind')) {
                     config.dirs.push(new DataBinding(this, node, attr, config));
 
                 } else if (name.startsWith('data-model')) {
                     config.dirs.push(new ModelBinding(this, node, attr, config));
+
+                } else if (name.startsWith('on')) {
+                    config.dirs.push(new EventBinding(this, node, attr, config));
                 }
             }
         }catch (error){
@@ -98,36 +100,33 @@ export default class Compiler {
 
         this.status = 'rendering';
 
-        const jobs = []
+        elements = (elements.length ? elements : this.elements.values());
 
-        elements = elements.length ? elements : this.elements.values()
+        const jobs = [];
 
-
-        /**
-         * ToDo: Execute Condition Bindings First.
-         * The execute additional bindings.
-         * this.view.root.dataset.compile !== 'false'
-         */
         for (const config of elements) {
 
-            const suspended = [];
-
-            const isSuspended = config.node.closest('[data-compile="false"]')?.contains(config.node);
+            let bypassRender = false
 
             for(const binding of config.dirs){
+
                 if(binding instanceof StateBinding){
                     binding.execute();
+                    continue;
                 }
+
                 if(binding instanceof ConditionBinding){
                     binding.execute();
+                    bypassRender = binding.shouldNotRender()
+                    continue;
                 }
-                if (!(binding instanceof EventBinding) && !isSuspended) {
+
+                if (!(binding instanceof EventBinding) && bypassRender === false) {
                     jobs.push(this.createJob(binding));
                 }
             }
         }
-
-       return this.processJobs(jobs);
+        this.processJobs(jobs);
     }
 
     /**
@@ -160,6 +159,10 @@ export default class Compiler {
         return Promise.allSettled(jobs).then((results)=>{
             this.status = 'rendered';
 
+            if(this.scope instanceof HTMLElement){
+                delete this.scope.dataset.cloak;
+            }
+
             if(this.scope.performanceMeasure instanceof Function){
                 this.scope.performanceMeasure('compile', 'render');
             }
@@ -180,35 +183,6 @@ export default class Compiler {
             return this.scope.errorHandler(error);
         }
         throw error;
-    }
-
-    /**
-     * @param {string} css
-     */
-    addStyleSheet(css) {
-
-        if(!css){
-            return;
-        }
-
-        const styleParser = new DOMParser();
-
-        const styleTag = styleParser
-            .parseFromString(css, "text/html")
-            .querySelector('style:first-of-type');
-
-        const style = `
-        [data-compile="false"]{
-            display: none;
-            pointer-events: none;
-        }
-        ${styleTag.textContent}
-        `;
-
-        const sheet = new CSSStyleSheet();
-        sheet.replace(style).then(()=>{
-            this.root.adoptedStyleSheets = [sheet];
-        });
     }
 
     /**
@@ -273,24 +247,6 @@ export default class Compiler {
             .replace(/"/g, '&quot;')
     }
 
-    worker(name){
-        if (!'Worker' in window) {
-            return this.handleError(new Error('Worker API not available.'))
-        }
-        const worker = new Worker(`/utilities/${name}.js`);
-        worker.addEventListener('error',this.scope.errorHandler);
-        worker.addEventListener('messageerror',this.scope.errorHandler);
-
-        return {
-            dispatch(data, callback){
-                worker.addEventListener('message',(event)=>{
-                    callback(event);
-                    worker.terminate();
-                });
-                worker.postMessage(structuredClone(data));
-            }
-        }
-    }
 }
 
 

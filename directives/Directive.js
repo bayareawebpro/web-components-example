@@ -119,4 +119,8 @@ export default class Directive{
             })
         }
     }
+
+    shouldNotRender(){
+        return this.element.closest('[data-compile="false"]') instanceof HTMLElement;
+    }
 }

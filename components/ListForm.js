@@ -24,7 +24,9 @@ export default class ListForm extends Component {
     }
 
     get help(){
-        return this.state.value ? `Add: ${this.state.value}`  : 'Enter ToDo Item...'
+        return this.state.value
+            ? `Add: ${this.state.value}`
+            : 'Enter ToDo Item...'
     }
 
     get template() {

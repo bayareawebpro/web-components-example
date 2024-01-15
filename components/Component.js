@@ -17,6 +17,8 @@ export default class Component extends HTMLElement {
         this.logMutations = false;
         this.measurePerformance = false;
         this.lockedForStateUpdate = false;
+        this.logHandler = this.log.bind(this);
+        this.dumpHandler = this.dump.bind(this);
         this.errorHandler = this.error.bind(this);
         this.props = this.watch(this.props || {});
         this.state = this.watch(this.data);
@@ -44,9 +46,7 @@ export default class Component extends HTMLElement {
 
     get styles() {
         return `
-            <style>
-            
-            </style>
+            <style></style>
         `;
     }
 
@@ -147,7 +147,7 @@ export default class Component extends HTMLElement {
         this.lockedForStateUpdate = false;
 
         if (reRender) {
-            return this.view.update().catch(this.errorHandler);
+            this.view.update();
         }
 
         return Promise.resolve();
@@ -159,8 +159,9 @@ export default class Component extends HTMLElement {
     }
 
     connectedCallback() {
+        this.setup();
         setTimeout( ()=>{
-            this.setup();
+            this.log('connected.');
             this.view.compile(this.template, this.styles);
             this.batchUpdate(() => {
                 this.$emit('connected')

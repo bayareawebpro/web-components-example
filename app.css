@@ -22,7 +22,3 @@ body{
     flex-direction: column;
     flex-grow: 1;
 }
-
-*[data-cloak]{
-    display: none;
-}

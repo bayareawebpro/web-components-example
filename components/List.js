@@ -39,7 +39,7 @@ export default class List extends Component {
             this.state.items.unshift({
                 id: uuid(),
                 index: 0,
-                value: event.detail.value
+                value: 'push 0'//event.detail.value
             });
 
             this.state.items.splice(1, 1, {
@@ -50,8 +50,8 @@ export default class List extends Component {
 
             this.state.items.splice(3, 1, {
                 id: uuid(),
-                index: 2,
-                value: 'update index 2'
+                index: 3,
+                value: 'update index 3'
             });
 
             this.state.items.splice(5, 1,{
@@ -60,36 +60,16 @@ export default class List extends Component {
                 value: 'update index 5'
             });
 
-            // const first = this.state.items[0];
-            // const last = this.state.items[this.state.items.length-1];
-            //
-            //
-            // if(!this.state.updated){
-            //     first.value = 'first'
-            //     last.value = 'last'
-            //     this.state.updated = true
-            // }
-            // this.state.items = this.state.items
-            //     .toSpliced(0, 1,  last)
-            //     .toSpliced(this.state.items.length-1, 1,  first);
-            // this.state.items.push({
-            //     id: uuid(),
-            //     value: event.detail.value
-            // });
-
-            this.log('Added Row');
         }).then(()=>this.view.ref('ul').scrollTo(0, 0))
     }
 
     updateItem({detail}) {
         const index = this.state.items.findIndex((item) => item.id === detail.id);
         this.state.items.splice(index, 1, detail);
-        this.log('Updated Row');
     }
 
     removeItem({detail}) {
         this.state.items = this.state.items.filter((item) => item.id !== detail.id);
-        this.log('Removed Row', detail);
     }
 
     get template() {

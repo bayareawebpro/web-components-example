@@ -4,7 +4,7 @@ export default class ListItem extends Component {
 
     constructor() {
         super();
-        this.debug = true;
+        this.debug = false;
     }
 
     get data() {
@@ -30,13 +30,14 @@ export default class ListItem extends Component {
     }
 
     onRemove() {
+
         const {item} = this.state;
 
-        this.view.ref('li:first-of-type').classList.add("fadeOut")
+        this.view.ref('li:first-of-type').classList.add("fadeOut");
 
         setTimeout(()=>{
-            this.$emit('custom-list:remove', item)
-        }, 100)
+            this.$emit('custom-list:remove', item);
+        }, 80)
     }
 
     beforeDestroy() {
@@ -48,6 +49,7 @@ export default class ListItem extends Component {
             <li data-if="state.item">
                 <div data-if="!state.editing" class="fadeInRight">
                     <div data-bind:text="state.item.index"></div>
+                    
                     <div class="preview" data-bind:text="state.item.value"></div>
                     <div class="actions"">
                         <button
@@ -90,54 +92,7 @@ export default class ListItem extends Component {
     get styles() {
         return `
             <style>
-            @keyframes fadeInRight {
-                0% {
-                    opacity: 0;
-                    transform: translateX(20px);
-                }
-                100% {
-                    opacity: 1;
-                    transform: translateX(0);
-                }
-            }
-            @keyframes fadeInLeft {
-                0% {
-                    opacity: 0;
-                    transform: translateX(-20px);
-                }
-                100% {
-                    opacity: 1;
-                    transform: translateX(0);
-                }
-            }
-            @keyframes fadeOut {
-                0% {
-                    opacity: 1;
-                }
-                100% {
-                    opacity: 0;
-                }
-            }
-            .fadeInRight,
-            .fadeInLeft,
-            .fadeOut {
-                animation-duration: 240ms;
-                animation-fill-mode: both;
-                -webkit-animation-duration: 240ms;
-                -webkit-animation-fill-mode: both;
-            }
-            .fadeInLeft {
-                animation-name: fadeInLeft;
-                -webkit-animation-name: fadeInLeft;
-            }
-            .fadeInRight {
-                animation-name: fadeInRight;
-                -webkit-animation-name: fadeInRight;
-            }
-            .fadeOut {
-                animation-name: fadeOut;
-                -webkit-animation-name: fadeOut;
-            }
+            
             li > div{
                 display: flex;
                 align-items: center;

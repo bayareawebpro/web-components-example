@@ -7,6 +7,10 @@
     <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
     <link rel="icon" href="./favicon.ico" type="image/x-icon">
 
+    <link rel="preload" href="./app.css" as="style">
+    <link rel="preload" href="./shared.css" as="style">
+    <link rel="stylesheet" href="./app.css">
+
     <link rel="modulepreload" href="./utilities/index.js">
     <link rel="modulepreload" href="./utilities/Compiler.js">
 
@@ -24,8 +28,6 @@
     <link rel="modulepreload" href="./directives/ConditionBinding.js">
 
     <script type="module" src="./components/index.js"></script>
-    <link rel="preload" href="./app.css" as="style">
-    <link rel="stylesheet" href="./app.css">
 </head>
 <body>
     <custom-list></custom-list>
