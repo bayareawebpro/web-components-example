@@ -50,7 +50,7 @@ export default class ListForm extends Component {
                         autofocus
                         type="text" 
                         placeholder="Add Item..."
-                        onkeydown="onKeyDown()"
+                        onkeydown="onKeyDown($event)"
                         data-model="state.value"
                     />
                     <button 
