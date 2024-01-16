@@ -1,5 +1,6 @@
 import Directive from "./Directive.js";
 import Compiler from "../utilities/Compiler.js";
+import {whenIdle} from "../utilities/index.js";
 
 const statements = {
     ARR: ' of ',
@@ -113,8 +114,8 @@ export default class LoopBinding extends Directive {
             return this.createChildren(this.evaluate());
         }
 
-        for (const task of this.queue) {
-            cancelIdleCallback(task);
+        for (const cancel of this.queue) {
+            cancel();
         }
 
         this.updateChildren(this.evaluate());
@@ -122,7 +123,7 @@ export default class LoopBinding extends Directive {
 
     createChildren(values) {
         this.queue = values.map((item, index)=>{
-            return requestIdleCallback(() => {
+            return whenIdle(() => {
                 this.queue.splice(index, 1);
                 const [child, config] = this.createChild(item);
                 this.compiler.append(child);

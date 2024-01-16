@@ -1,4 +1,15 @@
 
+export function whenIdle(callback){
+    // Super smooth performance, execution is very rapid.
+    if('requestIdleCallback' in window){
+        const cancelToken = requestIdleCallback(callback);
+        return ()=> cancelIdleCallback(cancelToken);
+    }
+    // A bit slower, but works. Safari is the new IE...
+    const cancelToken = setTimeout(callback);
+    return ()=> clearTimeout(cancelToken);
+}
+
 export function trimWhiteSpace(value){
     return value.replace(/^\s+/gm, '')
 }
@@ -34,13 +45,11 @@ export function toType(name, value){
 }
 
 export function factory(times) {
-    const adjectives = ["pretty", "large", "big", "small", "tall", "short", "long", "handsome", "plain", "quaint", "clean", "elegant", "easy", "angry", "crazy", "helpful", "mushy", "odd", "unsightly", "adorable", "important", "inexpensive", "cheap", "expensive", "fancy"],
-        colours = ["red", "yellow", "blue", "green", "pink", "brown", "purple", "brown", "white", "black", "orange"],
-        nouns = ["table", "chair", "house", "bbq", "desk", "car", "pony", "cookie", "sandwich", "burger", "pizza", "mouse", "keyboard"];
+    const adjectives = ['pretty', 'large', 'big', 'small', 'tall', 'short', 'long', 'handsome', 'plain', 'quaint', 'clean', 'elegant', 'easy', 'angry', 'crazy', 'helpful', 'mushy', 'odd', 'unsightly', 'adorable', 'important', 'inexpensive', 'cheap', 'expensive', 'fancy'],
+        colours = ['red', 'yellow', 'blue', 'green', 'pink', 'brown', 'purple', 'brown', 'white', 'black', 'orange'],
+        nouns = ['table', 'chair', 'house', 'bbq', 'desk', 'car', 'pony', 'cookie', 'sandwich', 'burger', 'pizza', 'mouse', 'keyboard'];
 
     function _random (max) { return Math.round(Math.random() * 1000) % max; }
-
-    let data = new Array(times);
 
     if(times === 1){
         return {
@@ -50,13 +59,13 @@ export function factory(times) {
             editing: false,
         }
     }
-    for (let i = 0; i < times; i++) {
-        data[i] = {
+
+    return new Array(times).map((index)=>{
+        return {
+            index,
             id: uuid(),
-            index: i,
             value: `${adjectives[_random(adjectives.length)]} ${colours[_random(colours.length)]} ${nouns[_random(nouns.length)]}`,
             editing: false,
         }
-    }
-    return data;
+    });
 }
