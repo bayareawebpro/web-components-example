@@ -4,7 +4,7 @@ import EventBinding from "../directives/EventBinding.js";
 import ModelBinding from "../directives/ModelBinding.js";
 import StateBinding from "../directives/StateBinding.js";
 import ConditionBinding from "../directives/ConditionBinding.js";
-import Directive from "../directives/Directive.js";
+import Queue from "./Queue.js";
 
 
 export default class Compiler {
@@ -13,9 +13,22 @@ export default class Compiler {
     constructor(scope, root = undefined) {
         this.prevCond = undefined;
         this.elements = new Map;
-        this.status = 'ready';
+        this.queue = new Queue;
         this.scope = scope;
         this.root = root;
+    }
+
+    get status() {
+
+        if (this.elements.size === 0) {
+            return 'ready';
+        }
+
+        if (this.queue.hasJobs) {
+            return 'rendering';
+        }
+
+        return 'rendered';
     }
 
     compile(html, styles) {
@@ -32,7 +45,6 @@ export default class Compiler {
 
         this.root.append(this.template.content);
 
-        this.status = 'compiled';
     }
 
     mapElements(nodeList) {
@@ -41,10 +53,9 @@ export default class Compiler {
         }
     }
 
-    mapElement(node, config = {scope: this.scope}){
-        this.status = 'compiling';
+    mapElement(node, config = {scope: this.scope}) {
 
-        if(this.elements.has(node)){
+        if (this.elements.has(node)) {
             return;
         }
 
@@ -54,7 +65,7 @@ export default class Compiler {
         // Some attributes are not iterable.
         const attributes = Array.from(node.attributes);
 
-        try{
+        try {
             for (const attr of attributes) {
 
                 const name = attr.localName;
@@ -80,13 +91,13 @@ export default class Compiler {
                     config.dirs.push(new EventBinding(this, node, attr, config));
                 }
             }
-        }catch (error){
+        } catch (error) {
             this.handleError(error)
         }
 
         if (config.dirs.length) {
 
-            if(customElements.get(node.localName)){
+            if (customElements.get(node.localName)) {
                 customElements.upgrade(node)
             }
 
@@ -96,102 +107,77 @@ export default class Compiler {
         return [node, config];
     }
 
-    update(...elements) {
+    /**
+     * @param {Object} configs
+     * @return {Promise<void>}
+     */
 
-        this.status = 'rendering';
+    update(...configs) {
 
-        elements = (elements.length ? elements : this.elements.values());
+        configs = (configs.length ? configs : this.elements.values());
 
-        const jobs = [];
+        for (const config of configs) {
 
-        for (const config of elements) {
-
-            let shouldRender = true
-
-            for(const binding of config.dirs){
-
+            config.dirs.forEach((binding) => {
                 /**
                  * Allow state binding to be executed.
                  */
-                if(binding instanceof StateBinding){
+                if (binding instanceof StateBinding) {
                     binding.execute();
-                    continue;
                 }
 
                 /**
                  * If element or it's ancestor has
                  * data-compile=false, don't render changes.
                  */
-                if(binding instanceof ConditionBinding){
+                else if (binding instanceof ConditionBinding) {
                     binding.execute();
-                    shouldRender = !(binding.isSuspended || binding.isContainedBySuspend)
-                    continue;
+                    if (binding.isSuspended || binding.isContainedBySuspend) {
+                        return false;
+                    }
                 }
 
                 /**
                  * Event bindings are executed before
                  * the element is appended to the document.
                  */
-                if (!(binding instanceof EventBinding) && shouldRender) {
-                    jobs.push(this.createJob(binding));
+                else if (!(binding instanceof EventBinding)) {
+
+                    this.queue.addJob(()=>{
+                        binding.execute();
+                    });
                 }
-            }
+            });
+
         }
-        this.processJobs(jobs);
+        return this.processJobs();
     }
 
     /**
-     * @param {Directive|Object} task
      * @return {Promise<void>}
      */
-    createJob(task){
-        return new Promise((resolve, reject) => {
-            queueMicrotask(() => {
-                try {
-                    if(task instanceof Directive){
-                        task.execute();
-                    }else if(task instanceof Function){
-                        task();
-                    }
-                    resolve();
-                } catch (error) {
-                    reject(error);
-                }
-            });
-        })
-    }
+     processJobs() {
 
-    processJobs(jobs){
+        this.scope.logHandler(this.status)
 
-        if(this.scope.performanceMark instanceof Function){
+        if (this.scope.performanceMark instanceof Function) {
             this.scope.performanceMark('compile');
         }
 
-        return Promise.allSettled(jobs).then((results)=>{
-
-            this.status = 'rendered';
-
-            if(this.scope instanceof HTMLElement){
-                delete this.scope.dataset.cloak;
-            }
-
-            if(this.scope.performanceMeasure instanceof Function){
-                this.scope.performanceMeasure('compile', 'render');
-            }
-
-            if(!this.scope.debug){
-                return;
-            }
-
-            const failed = results.find(({status})=> status === 'rejected');
-            if(failed){
-                this.handleError(failed.reason)
-            }
-        });
+        return this.queue.work()
+            .catch((error)=>{
+                if (this.scope.debug) {
+                    this.handleError(error)
+                }
+            }).finally(()=>{
+                if (this.scope.performanceMeasure instanceof Function) {
+                    this.scope.performanceMeasure('compile', 'render');
+                }
+            });
     }
 
-    handleError(error){
-        if(this.scope.errorHandler instanceof Function){
+    handleError(error) {
+        if (this.scope.errorHandler instanceof Function) {
             return this.scope.errorHandler(error);
         }
         throw error;
@@ -200,7 +186,7 @@ export default class Compiler {
     /**
      * @param {HTMLElement} element
      */
-    remove(element){
+    remove(element) {
         this.elements.delete(element);
         element.remove();
     }
@@ -208,14 +194,14 @@ export default class Compiler {
     /**
      * @param {[HTMLElement|DocumentFragment]} children
      */
-    append(...children){
+    append(...children) {
         this.root.append(...children);
     }
 
     /**
      * @param {[HTMLElement|DocumentFragment]} children
      */
-    prepend(...children){
+    prepend(...children) {
         this.root.prepend(...children);
     }
 

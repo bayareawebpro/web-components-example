@@ -147,7 +147,7 @@ export default class Component extends HTMLElement {
         this.lockedForStateUpdate = false;
 
         if (reRender) {
-            this.view.update();
+            return this.view.update();
         }
 
         return Promise.resolve();
@@ -164,6 +164,7 @@ export default class Component extends HTMLElement {
         this.view.compile(this.template, this.styles);
         this.batchUpdate(() => {
             this.$emit('connected')
+            delete this.dataset.cloak
         });
     }
 

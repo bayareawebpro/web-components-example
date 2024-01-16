@@ -44,7 +44,6 @@ export default class LoopBinding extends Directive {
         const keyName = this.getKeyName(itemName);
         const keyGetter = this.createExpression(keyName);
 
-        this.queue = [];
         this.modifiers = {
             expectsArray,
             itemName,
@@ -122,32 +121,45 @@ export default class LoopBinding extends Directive {
      * Execute the rendering strategy.
      */
     execute() {
-
+        /**
+         * When the compiler is in "ready" state, we can
+         * simply clone and append the new elements.
+         */
         if (this.compiler.status === 'ready') {
             return this.createChildren(this.evaluate());
         }
 
-        if(this.queue.length){
-            for (const cancel of this.queue.reverse()) {
-                queueMicrotask(cancel);
-            }
+        /**
+         * If the iterable object is mutated before rendering completes, causing a reflow,
+         * iterate the queue of pending renders (already in reverse order) canceling each
+         * and working toward the current render to prevent a race condition.
+         */
+        if(!this.compiler.queue.hasJobs){
+            //this.compiler.queue.rejectPendingJobs();
+            this.updateChildren(this.evaluate());
         }
-
-        this.updateChildren(this.evaluate());
     }
 
     /**
-     * @param {Array} values
+     * Wrap the items as deferred tasks using "whenIdle" wrapper.
+     * The queue will contain "cancel" callbacks in reverse order.
+     *
+     * Each cancel callback is removed from the queue as soon
+     * as the deferred callback is executed.
+     * @param {Object[]} values
      */
     createChildren(values) {
-        this.queue = values.map((item, index)=>{
-            return whenIdle(() => {
-                this.queue.splice(index, 1);
+        for(const item of values){
+            whenIdle(()=> {
                 const [child, config] = this.createChild(item);
-                queueMicrotask(()=>this.compiler.append(child));
-                queueMicrotask(()=>this.compiler.update(config));
-            });
-        })
+                queueMicrotask(()=>{
+                    this.compiler.append(child);
+                });
+                queueMicrotask(()=>{
+                    this.compiler.update(config);
+                });
+            })
+        }
     }
 
     /**
@@ -161,6 +173,7 @@ export default class LoopBinding extends Directive {
         const itemKeysIndex = [];
         const elementsIndex = [];
         const itemKeysArray = values.map((item)=>this.getKey(item));
+
 
         /**
          * Walk looped element and build indexes.
