@@ -36,15 +36,20 @@ export default class Compiler {
         this.template = document.createElement('template');
 
         this.template.innerHTML = `
+        <style>
+        [data-cloak="true"],
+        [data-compile="false"]{
+            pointer-events: none;
+            display: none;
+        }
+        </style>
         <link rel="stylesheet" href="./shared.css">
         ${styles.replace(/^\s+/gm, '')}
         ${html}
         `;
 
         this.mapElements(this.template.content.querySelectorAll(`*`));
-
         this.root.append(this.template.content);
-
     }
 
     mapElements(nodeList) {

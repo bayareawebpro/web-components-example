@@ -1,15 +1,3 @@
-
-/*
-* =========================
-* Compiler Utilities
-* =========================
-*/
-[data-cloak="true"],
-[data-compile="false"]{
-    pointer-events: none;
-    display: none;
-}
-
 /*
 * =========================
 * Forms
@@ -80,45 +68,40 @@ button[disabled]{
 @keyframes fadeInRight {
     0% {
         opacity: 0;
+        filter: blur(0.1rem);
         transform: translateX(20px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateX(0);
     }
 }
 @keyframes fadeInLeft {
     0% {
         opacity: 0;
+        filter: blur(0.1rem);
         transform: translateX(-20px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateX(0);
     }
 }
 @keyframes fadeOut {
-    0% {
-        opacity: 1;
-    }
     100% {
         opacity: 0;
+        transform: scale3d(0.8, 0.8, 0.3);
+        filter: blur(1.5rem);
     }
 }
 
 .fadeInRight,
 .fadeInLeft,
 .fadeOut {
-    animation-duration: 240ms;
+    animation-duration: 180ms;
     animation-fill-mode: both;
 }
 .fadeInLeft {
     animation-name: fadeInLeft;
+    animation-timing-function: ease-in;
 }
 .fadeInRight {
     animation-name: fadeInRight;
+    animation-timing-function: ease-in;
 }
 .fadeOut {
     animation-name: fadeOut;
-    animation-duration: 120ms;
+    animation-timing-function: ease-in;
 }

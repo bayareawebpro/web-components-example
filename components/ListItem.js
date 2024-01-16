@@ -37,7 +37,7 @@ export default class ListItem extends Component {
 
         setTimeout(()=>{
             this.$emit('custom-list:remove', item);
-        }, 120)
+        }, 180)
     }
 
     get template() {
