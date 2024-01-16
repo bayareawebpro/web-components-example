@@ -158,8 +158,6 @@ export default class Compiler {
      */
      processJobs() {
 
-        this.scope.logHandler(this.status)
-
         if (this.scope.performanceMark instanceof Function) {
             this.scope.performanceMark('compile');
         }
