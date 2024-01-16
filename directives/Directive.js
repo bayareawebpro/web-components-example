@@ -100,6 +100,10 @@ export default class Directive{
         return this.element.dataset.compile === 'false';
     }
 
+    get isContainedBySuspend(){
+        return this.element.closest('[data-compile="false"]') instanceof HTMLElement;
+    }
+
     suspend(){
         this.element.dataset.compile = 'false';
 
@@ -118,9 +122,5 @@ export default class Directive{
                 node.dataset.compile = 'true';
             })
         }
-    }
-
-    shouldNotRender(){
-        return this.element.closest('[data-compile="false"]') instanceof HTMLElement;
     }
 }

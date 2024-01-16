@@ -106,22 +106,33 @@ export default class Compiler {
 
         for (const config of elements) {
 
-            let bypassRender = false
+            let shouldRender = true
 
             for(const binding of config.dirs){
 
+                /**
+                 * Allow state binding to be executed.
+                 */
                 if(binding instanceof StateBinding){
                     binding.execute();
                     continue;
                 }
 
+                /**
+                 * If element or it's ancestor has
+                 * data-compile=false, don't render changes.
+                 */
                 if(binding instanceof ConditionBinding){
                     binding.execute();
-                    bypassRender = binding.shouldNotRender()
+                    shouldRender = !(binding.isSuspended || binding.isContainedBySuspend)
                     continue;
                 }
 
-                if (!(binding instanceof EventBinding) && bypassRender === false) {
+                /**
+                 * Event bindings are executed before
+                 * the element is appended to the document.
+                 */
+                if (!(binding instanceof EventBinding) && shouldRender) {
                     jobs.push(this.createJob(binding));
                 }
             }

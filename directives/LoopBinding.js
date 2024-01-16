@@ -10,10 +10,10 @@ const statements = {
 /**
  * @class LoopBinding
  * @property {Modifiers} modifiers
- * @property {HTMLTemplateElement} loopedElement
+ * @property {HTMLTemplateElement} iterableElement
  * @property {Array} childKeys
  * @property {string} childKeyName
- * @property {string} selector
+ * @property {string} iterableSelector
  * @property {Map} keys
  */
 export default class LoopBinding extends Directive {
@@ -35,13 +35,8 @@ export default class LoopBinding extends Directive {
             errorHandler: this.config.scope.errorHandler,
         }, this.element.parentElement);
 
-        if (this.element instanceof HTMLTemplateElement) {
-            this.loopedElement = this.element.content.firstElementChild;
-        } else {
-            this.loopedElement = this.element;
-        }
-
-        this.selector = `${this.element.parentElement.localName} > ${this.loopedElement.localName}`;
+        this.iterableElement = this.getIterableElement();
+        this.iterableSelector = this.getIterableSelector();
 
         const {ARR, OBJ} = statements;
         const expectsArray = this.expression.includes(ARR);
@@ -60,27 +55,44 @@ export default class LoopBinding extends Directive {
     }
 
     /**
-     * Create an expression to get the iterable object.
+     * Create an expression to get the iterable element scope.
      */
     bind() {
         this.bindExpression(this.modifiers.dataName);
     }
 
+    getIterableSelector() {
+        return `${this.element.parentElement.localName} > ${this.iterableElement.localName}`;
+    }
+
     /**
      * Get the Key Name specified by the looped element.
+     * @return {HTMLElement}
+     */
+    getIterableElement() {
+        if (this.element instanceof HTMLTemplateElement) {
+            return this.element.content.firstElementChild;
+        }
+        return this.element;
+    }
+
+    /**
+     * Get the Key Name specified by the looped element.
+     * @param {string} itemName
      */
     getKeyName(itemName) {
-        if (!this.loopedElement.dataset['bind:key']) {
+        if (!this.iterableElement.dataset['bind:key']) {
             throw new Error(`ForLoop (${this.expression}) requires data-key="${itemName}.{id}" attribute.`)
         }
-        return this.loopedElement.dataset['bind:key'];
+        return this.iterableElement.dataset['bind:key'];
     }
 
     /**
      * Create a new child element and map it with the compiler.
+     * @param {Object} stateVal
      */
     createChild(stateVal) {
-        return this.compiler.mapElement(this.loopedElement.cloneNode(true), {
+        return this.compiler.mapElement(this.iterableElement.cloneNode(true), {
             scope: this.createLoopIterationScope(stateVal)
         });
     }
@@ -89,7 +101,7 @@ export default class LoopBinding extends Directive {
      * Crate a unique scope for every loop iteration.
      * with an object property that matches
      * the key used in the loop scope.
-     * @param value
+     * @param {*} value
      * @return {Object}
      */
     createLoopIterationScope(value) {
@@ -110,29 +122,37 @@ export default class LoopBinding extends Directive {
      * Execute the rendering strategy.
      */
     execute() {
+
         if (this.compiler.status === 'ready') {
             return this.createChildren(this.evaluate());
         }
 
-        for (const cancel of this.queue) {
-            cancel();
+        if(this.queue.length){
+            for (const cancel of this.queue.reverse()) {
+                queueMicrotask(cancel);
+            }
         }
 
         this.updateChildren(this.evaluate());
     }
 
+    /**
+     * @param {Array} values
+     */
     createChildren(values) {
         this.queue = values.map((item, index)=>{
             return whenIdle(() => {
                 this.queue.splice(index, 1);
                 const [child, config] = this.createChild(item);
-                this.compiler.append(child);
-                this.compiler.update(config);
+                queueMicrotask(()=>this.compiler.append(child));
+                queueMicrotask(()=>this.compiler.update(config));
             });
         })
     }
 
-
+    /**
+     * @param {Array} values
+     */
     updateChildren(values) {
 
         let previousElement = null;
@@ -146,7 +166,7 @@ export default class LoopBinding extends Directive {
          * Walk looped element and build indexes.
          * Cleanup children that no longer exist.
          */
-        this.compiler.walk(this.selector, (child) => {
+        this.compiler.walk(this.iterableSelector, (child) => {
             const key = child.getAttribute('key');
             if (!itemKeysArray.includes(key)) {
                 this.compiler.remove(child);

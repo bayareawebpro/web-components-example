@@ -60,12 +60,14 @@ export function factory(times) {
         }
     }
 
-    return new Array(times).map((index)=>{
-        return {
-            index,
+    const data = new Array(times);
+    for (let i = 0; i < times; i++) {
+        data[i] = {
             id: uuid(),
+            index: i,
             value: `${adjectives[_random(adjectives.length)]} ${colours[_random(colours.length)]} ${nouns[_random(nouns.length)]}`,
             editing: false,
         }
-    });
+    }
+    return data;
 }
