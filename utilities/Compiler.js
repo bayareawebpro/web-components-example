@@ -147,7 +147,6 @@ export default class Compiler {
                  * the element is appended to the document.
                  */
                 else if (!(binding instanceof EventBinding)) {
-
                     this.queue.addJob(()=>{
                         binding.execute();
                     });
@@ -217,11 +216,18 @@ export default class Compiler {
 
     /**
      * @param {string} selector
+     */
+    find(selector){
+        return this.root.querySelectorAll(selector)
+    }
+
+    /**
+     * @param {string} selector
      * @param {Function} callback
      * @return {this}
      */
     walk(selector = '*', callback) {
-        return this.walkElements(this.root.querySelectorAll(selector), callback)
+        return this.walkElements(this.find(selector), callback)
     }
 
     /**

@@ -14,7 +14,6 @@ const statements = {
  * @property {Array} childKeys
  * @property {string} childKeyName
  * @property {string} iterableSelector
- * @property {Map} keys
  */
 export default class LoopBinding extends Directive {
 
@@ -27,8 +26,6 @@ export default class LoopBinding extends Directive {
      * @property {Function} keyGetter
      */
     parse() {
-        this.keys = new Map;
-
         this.compiler = new Compiler({
             logHandler: this.config.scope.logHandler,
             dumpHandler: this.config.scope.dumpHandler,
@@ -142,14 +139,10 @@ export default class LoopBinding extends Directive {
 
     /**
      * Wrap the items as deferred tasks using "whenIdle" wrapper.
-     * The queue will contain "cancel" callbacks in reverse order.
-     *
-     * Each cancel callback is removed from the queue as soon
-     * as the deferred callback is executed.
      * @param {Object[]} values
      */
     createChildren(values) {
-        for(const item of values){
+        for(const [index, item] of values.entries()){
             whenIdle(()=> {
                 const [child, config] = this.createChild(item);
                 queueMicrotask(()=>{
@@ -170,38 +163,37 @@ export default class LoopBinding extends Directive {
         let previousElement = null;
         const createConfigs = [];
         const renderConfigs = [];
-        const itemKeysIndex = [];
-        const elementsIndex = [];
-        const itemKeysArray = values.map((item)=>this.getKey(item));
-
+        const elementIndex = [];
+        const elementKeyIndex = [];
+        const itemKeyIndex = values.map((item)=>this.getKey(item));
 
         /**
-         * Walk looped element and build indexes.
-         * Cleanup children that no longer exist.
+         * Walk the previously rendered elements and build key indexes.
+         * Cleanup children that no longer exist in the items array.
          */
         this.compiler.walk(this.iterableSelector, (child) => {
             const key = child.getAttribute('key');
-            if (!itemKeysArray.includes(key)) {
+            if (!itemKeyIndex.includes(key)) {
                 this.compiler.remove(child);
                 return;
             }
-            itemKeysIndex.push(key);
-            elementsIndex.push(child);
+            elementKeyIndex.push(key);
+            elementIndex.push(child);
         });
 
         /**
-         * Iterate the array items and check if the key exists and the index of the item, matches the key.
-         * Update children that have a key index mismatch. Create new children and append after the last
-         * child seen, or fallback to the parent element.
+         * Iterate the array items and check if a child exists at each index and if the key matches.
+         * If the key doesn't match (invalid state at index), map the new scope for the item at that index.
+         * Create new children and append after the last child seen, or fallback to the parent element.
          */
         for (const [index,item] of values.entries()) {
 
             const key = this.getKey(item);
 
-            if (itemKeysIndex.includes(key)) {
-                const child = elementsIndex.at(index);
+            if (elementKeyIndex.includes(key)) {
+                const child = elementIndex.at(index);
 
-                if(itemKeysIndex.at(index) === key){
+                if(elementKeyIndex.at(index) === key){
                     previousElement = child;
                     continue;
                 }
@@ -215,8 +207,8 @@ export default class LoopBinding extends Directive {
 
             const [newChild, newConfig] = this.createChild(item);
             renderConfigs.push(newConfig);
-            itemKeysIndex.splice(index, 0, key);
-            elementsIndex.splice(index, 0, newChild);
+            elementKeyIndex.splice(index, 0, key);
+            elementIndex.splice(index, 0, newChild);
             createConfigs.push({newConfig, newChild, sibling: previousElement || this.element});
             previousElement = newChild;
         }
